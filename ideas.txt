@@ -1,0 +1,136 @@
+Ideas:
+
+shell language
+python-like language
+c interop is cool
+unsafe?
+
+math is cool
+concurrency is cool
+music
+
+optional type annotations with dynamic checking?
+
+
+
+rust fn do_thing_fast(s: &str) {
+
+}
+
+
+enum E {
+    A{thingness, goodness},
+    B(badness),
+    C
+}
+
+struct S {
+    x, y
+}
+
+fn make_s() {
+    S{x: 2, y:3}
+}
+
+fn make_e() {
+    E::A{thingness: 2, goodness: 3}
+    E::B(234)
+    E::C
+}
+
+fn sum(a) {
+    s = 0
+
+    for aa in a {
+        s = s + aa
+    }
+
+    s
+}
+
+
+fn show_off_lambda() {
+    l = { a in
+        a + 2
+    }
+
+    s = [1, 2, 3].fold(0, l)
+    s = [1, 2, 3].fold(0) {a in
+        a + 2
+    } 
+}
+
+
+
+
+
+
+
+
+a = [1, 2, 3]
+
+// It's like rust, but no types, no lifetimes, garbage collected,
+// so actually it's nothing like rust.
+
+s = argv()[1]
+
+
+
+fn f(e) {
+
+    match e {
+        A(t, g) => {
+            t + 1
+        },
+        B => {
+            3
+        }
+    }
+}
+
+
+
+
+
+fn do_thing(s: string) {
+
+}
+
+fn square(n: number) {
+
+}
+
+fn iter_list(l: [number]) {
+
+}
+
+// Rc<Vec>
+l = [1, 2, 3, 4]
+
+s = "1234"
+do_thing(s)
+
+
+Dynamic land: all numbers are f64, all strings are Rc<String>
+
+bark
+peace
+forest
+redwood
+understory
+pine
+maple
+bloom
+seedling
+canopy
+moss
+
+
+MVP:
+
+Different paths:
+
+values
+functions
+operators
+types
