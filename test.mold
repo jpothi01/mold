@@ -1,1 +1,3 @@
-john_is_great
+a = 1
+b = 2
+a+b

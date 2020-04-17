@@ -8,6 +8,6 @@ pub fn eval(expr: &Expr) -> f64 {
         },
         Expr::Number(number) => *number,
         Expr::Ident(_) => 0f64,
-        Expr::Assignment { lhs, rhs } => 0f64,
+        Expr::Assignment { lhs, rhs, rest } => 0f64,
     }
 }

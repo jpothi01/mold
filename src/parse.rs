@@ -52,6 +52,28 @@ impl<'a> ParserState<'a> {
     fn consume_character(&mut self) {
         self.remaining_input = &self.remaining_input[1..]
     }
+    fn consume_until_nonwhitespace(&mut self) {
+        while let Some(c) = self.next_character() {
+            if c.is_whitespace() {
+                self.consume_character();
+            } else {
+                break;
+            }
+        }
+    }
+    fn expect_character_and_consume(&mut self, character: char) -> Result<(), ParseError> {
+        if let Some(c) = self.next_character() {
+            if c == character {
+                self.consume_character();
+                return Ok(());
+            }
+        }
+
+        Err(make_parse_error(
+            self,
+            format!("Expected '{}'", character).as_str(),
+        ))
+    }
 }
 
 impl fmt::Display for ParseError {
@@ -65,7 +87,34 @@ fn make_parse_error(parser_state: &ParserState, msg: &str) -> ParseError {
         parser_state.original_input.len() - parser_state.remaining_input.len();
     let number_of_squiggles = error_character_index;
     let squiggle_string = "~".repeat(number_of_squiggles);
-    let context = format!("\t{}\n\t{}^", parser_state.original_input, squiggle_string);
+
+    let mut original_input_substring_start_index = error_character_index;
+    while original_input_substring_start_index > 0
+        && parser_state
+            .original_input
+            .chars()
+            .nth(original_input_substring_start_index)
+            .unwrap()
+            != '\n'
+    {
+        original_input_substring_start_index -= 1;
+    }
+
+    let mut original_input_substring_end_index = error_character_index;
+    while original_input_substring_end_index < parser_state.original_input.len()
+        && parser_state
+            .original_input
+            .chars()
+            .nth(original_input_substring_end_index)
+            .unwrap()
+            != '\n'
+    {
+        original_input_substring_end_index += 1;
+    }
+
+    let original_input_substring = &parser_state.original_input
+        [original_input_substring_start_index..original_input_substring_end_index];
+    let context = format!("\t{}\n\t{}^", original_input_substring, squiggle_string);
     ParseError {
         context: String::from(context),
         message: String::from(msg),
@@ -83,8 +132,9 @@ pub enum Expr {
     Number(f64),
     Ident(Identifier),
     Assignment {
-        lhs: Identifier,
+        lhs: Box<Expr>,
         rhs: Box<Expr>,
+        rest: Box<Expr>,
     },
 }
 
@@ -94,7 +144,9 @@ impl Debug for Expr {
             Expr::BinOp { op, rhs, lhs } => write!(f, "({:?} {:?} {:?})", op, *rhs, *lhs),
             Expr::Number(n) => write!(f, "({:?})", n),
             Expr::Ident(i) => write!(f, "(id {:?})", i),
-            Expr::Assignment { lhs, rhs } => write!(f, "(assign {:?} {:?}", lhs.as_str(), *rhs),
+            Expr::Assignment { lhs, rhs, rest } => {
+                write!(f, "(assign {:?} {:?} {:?})", *lhs, *rhs, *rest)
+            }
         }
     }
 }
@@ -164,6 +216,8 @@ fn parse_binop_rhs(
 }
 
 fn parse_number(parser_state: &mut ParserState) -> Result<Expr, ParseError> {
+    println!("parse_number: {:?}", parser_state);
+
     let is_part_of_number = |c: char| c.is_digit(10) || c == '.' || c == '-';
     let maybe_last_nonnumeric_index = parser_state
         .remaining_input
@@ -186,6 +240,8 @@ fn parse_number(parser_state: &mut ParserState) -> Result<Expr, ParseError> {
 }
 
 fn parse_identifier(parser_state: &mut ParserState) -> Result<Expr, ParseError> {
+    println!("parse_identifier: {:?}", parser_state);
+
     let is_part_of_identifier = |c: char| c.is_alphanumeric() || c == '_';
     let maybe_last_non_identifier_index = parser_state
         .remaining_input
@@ -209,6 +265,32 @@ fn parse_identifier(parser_state: &mut ParserState) -> Result<Expr, ParseError> 
         }
     };
     Ok(Expr::Ident(String::from(identifier_substring)))
+}
+
+fn parse_assignment(parser_state: &mut ParserState, lhs: Expr) -> Result<Expr, ParseError> {
+    println!("parse_assignment: {:?}", parser_state);
+
+    assert!(parser_state.next_character() == Some('='));
+    parser_state.consume_character();
+    parser_state.consume_until_nonwhitespace();
+
+    match &lhs {
+        Expr::Ident(_) => {
+            let rhs = parse_primary(parser_state)?;
+            parser_state.expect_character_and_consume('\n')?;
+            let rest = parse_expr(parser_state)?;
+
+            Ok(Expr::Assignment {
+                lhs: Box::new(lhs),
+                rhs: Box::new(rhs),
+                rest: Box::new(rest),
+            })
+        }
+        _ => Err(make_parse_error(
+            parser_state,
+            "Left-hand side of assignment must be identifier",
+        )),
+    }
 }
 
 fn parse_paren_expr(parser_state: &mut ParserState) -> Result<Expr, ParseError> {
@@ -254,6 +336,7 @@ fn parse_expr(parser_state: &mut ParserState) -> Result<Expr, ParseError> {
     println!("parse_expr: {:?}", parser_state);
     let primary = parse_primary(parser_state)?;
 
+    parser_state.consume_until_nonwhitespace();
     let maybe_next_character = parser_state.next_character();
     if maybe_next_character.is_some() {
         let next_character = maybe_next_character.unwrap();
@@ -261,6 +344,8 @@ fn parse_expr(parser_state: &mut ParserState) -> Result<Expr, ParseError> {
             parse_binop_rhs(parser_state, primary, -1)
         } else if next_character == ')' {
             Ok(primary)
+        } else if next_character == '=' {
+            parse_assignment(parser_state, primary)
         } else {
             Err(make_parse_error(
                 parser_state,

@@ -1,5 +1,5 @@
 [package]
-name = "bark"
+name = "mold"
 version = "0.1.0"
 authors = ["John Pothier <john.pothier@outlook.com>"]
 edition = "2018"

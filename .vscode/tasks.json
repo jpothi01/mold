@@ -15,7 +15,10 @@
                 "$rustc"
             ],
             "options": {
-                "cwd": "${workspaceFolder}"
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "RUST_BACKTRACE": 1
+                }
             }
         }
     ]

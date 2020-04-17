@@ -1,5 +1,5 @@
-use bark::eval;
-use bark::parse;
+use mold::eval;
+use mold::parse;
 use std::env;
 use std::fs;
 extern crate term;
@@ -25,9 +25,9 @@ fn main() {
         let mut terminal = term::stdout().unwrap();
         terminal.fg(term::color::RED).unwrap();
         terminal.attr(term::Attr::Bold).unwrap();
-        println!("Parsing failed.");
         println!("{}", e);
         let _ = terminal.reset();
+        return;
     }
 
     let expr = &expr_result.unwrap();
