@@ -72,6 +72,8 @@ fn make_parse_error(parser_state: &ParserState, msg: &str) -> ParseError {
     }
 }
 
+type Identifier = String;
+
 pub enum Expr {
     BinOp {
         op: Op,
@@ -79,6 +81,11 @@ pub enum Expr {
         lhs: Box<Expr>,
     },
     Number(f64),
+    Ident(Identifier),
+    Assignment {
+        lhs: Identifier,
+        rhs: Box<Expr>,
+    },
 }
 
 impl Debug for Expr {
@@ -86,6 +93,8 @@ impl Debug for Expr {
         match self {
             Expr::BinOp { op, rhs, lhs } => write!(f, "({:?} {:?} {:?})", op, *rhs, *lhs),
             Expr::Number(n) => write!(f, "({:?})", n),
+            Expr::Ident(i) => write!(f, "(id {:?}", i),
+            Expr::Assignment { lhs, rhs } => write!(f, "(assign {:?} {:?}", lhs.as_str(), *rhs),
         }
     }
 }

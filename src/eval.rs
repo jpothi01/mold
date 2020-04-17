@@ -7,5 +7,7 @@ pub fn eval(expr: &Expr) -> f64 {
             Op::Plus => eval(lhs) + eval(rhs),
         },
         Expr::Number(number) => *number,
+        Expr::Ident(_) => 0f64,
+        Expr::Assignment { lhs, rhs } => 0f64,
     }
 }
