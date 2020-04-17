@@ -93,7 +93,7 @@ impl Debug for Expr {
         match self {
             Expr::BinOp { op, rhs, lhs } => write!(f, "({:?} {:?} {:?})", op, *rhs, *lhs),
             Expr::Number(n) => write!(f, "({:?})", n),
-            Expr::Ident(i) => write!(f, "(id {:?}", i),
+            Expr::Ident(i) => write!(f, "(id {:?})", i),
             Expr::Assignment { lhs, rhs } => write!(f, "(assign {:?} {:?}", lhs.as_str(), *rhs),
         }
     }
@@ -185,6 +185,32 @@ fn parse_number(parser_state: &mut ParserState) -> Result<Expr, ParseError> {
     }
 }
 
+fn parse_identifier(parser_state: &mut ParserState) -> Result<Expr, ParseError> {
+    let is_part_of_identifier = |c: char| c.is_alphanumeric() || c == '_';
+    let maybe_last_non_identifier_index = parser_state
+        .remaining_input
+        .chars()
+        .position(|c| !is_part_of_identifier(c));
+    let identifier_substring = match maybe_last_non_identifier_index {
+        Some(last_non_identifier_index) => {
+            &parser_state.remaining_input[..last_non_identifier_index]
+        }
+        None => parser_state.remaining_input,
+    };
+
+    if identifier_substring.len() == 0 {
+        return Err(make_parse_error(parser_state, "Expected identifier"));
+    }
+
+    parser_state.remaining_input = match maybe_last_non_identifier_index {
+        None => "",
+        Some(last_non_identifier_index) => {
+            &parser_state.remaining_input[last_non_identifier_index..]
+        }
+    };
+    Ok(Expr::Ident(String::from(identifier_substring)))
+}
+
 fn parse_paren_expr(parser_state: &mut ParserState) -> Result<Expr, ParseError> {
     println!("parse_paren_expr: {:?}", parser_state);
 
@@ -215,6 +241,10 @@ fn parse_primary(parser_state: &mut ParserState) -> Result<Expr, ParseError> {
 
     if next_character == '(' {
         return parse_paren_expr(parser_state);
+    }
+
+    if next_character.is_alphabetic() {
+        return parse_identifier(parser_state);
     }
 
     return parse_number(parser_state);

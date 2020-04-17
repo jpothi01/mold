@@ -9,11 +9,14 @@
             "command": "cargo",
             "args": [
                 "run",
-                "\"(1+2)+3\""
+                "test.mold"
             ],
             "problemMatcher": [
                 "$rustc"
             ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            }
         }
     ]
 }
