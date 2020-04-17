@@ -12,6 +12,16 @@ impl Op {
             _ => None,
         }
     }
+
+    pub fn is_binop(c: char) -> bool {
+        Op::from_char(c).is_some()
+    }
+
+    fn precedence(&self) -> i32 {
+        match self {
+            Op::Plus => 0,
+        }
+    }
 }
 
 impl Debug for Op {
@@ -80,6 +90,70 @@ impl Debug for Expr {
     }
 }
 
+fn parse_binop_rhs(
+    parser_state: &mut ParserState,
+    lhs: Expr,
+    minimum_precedence: i32,
+) -> Result<Expr, ParseError> {
+    assert!(parser_state.remaining_input.len() > 0);
+    println!("parse_binop_rhs: {:?}", parser_state);
+
+    let mut new_lhs = lhs;
+    loop {
+        let maybe_next_character = parser_state.next_character();
+        if maybe_next_character.is_none() {
+            return Ok(new_lhs);
+        }
+
+        let next_character = maybe_next_character.unwrap();
+        let maybe_op = Op::from_char(next_character);
+        if maybe_op.is_none() {
+            if next_character != ')' {
+                return Err(make_parse_error(parser_state, "Expected operator."));
+            }
+
+            return Ok(new_lhs);
+        }
+
+        let op = maybe_op.unwrap();
+        let op_precedence = op.precedence();
+
+        if op_precedence < minimum_precedence {
+            // Our current expression has higher precedence than the next, so we're done collecting
+            // the terms for it now.
+            return Ok(new_lhs);
+        }
+
+        parser_state.consume_character();
+
+        let next_primary_expr = parse_primary(parser_state)?;
+        println!("next_primary_expr: {:?}", next_primary_expr);
+        println!("{:?}", parser_state);
+
+        // Clean this up
+        let rhs = if parser_state.remaining_input.len() > 0
+            && Op::is_binop(parser_state.next_character().unwrap())
+        {
+            let next_op = Op::from_char(parser_state.next_character().unwrap()).unwrap();
+            let next_precedence = next_op.precedence();
+            if next_precedence > op_precedence {
+                parse_binop_rhs(parser_state, next_primary_expr, op_precedence + 1)?
+            } else {
+                next_primary_expr
+            }
+        } else {
+            next_primary_expr
+        };
+
+        new_lhs = Expr::BinOp {
+            op: op,
+            lhs: Box::new(new_lhs),
+            rhs: Box::new(rhs),
+        };
+        println!("new_lhs: {:?}", new_lhs);
+    }
+}
+
 fn parse_number(parser_state: &mut ParserState) -> Result<Expr, ParseError> {
     let is_part_of_number = |c: char| c.is_digit(10) || c == '.' || c == '-';
     let maybe_last_nonnumeric_index = parser_state
@@ -90,15 +164,73 @@ fn parse_number(parser_state: &mut ParserState) -> Result<Expr, ParseError> {
         Some(last_nonnumeric_index) => &parser_state.remaining_input[..last_nonnumeric_index],
         None => parser_state.remaining_input,
     };
+
     let number_parse_result = numeric_substring.parse::<f64>();
+    parser_state.remaining_input = match maybe_last_nonnumeric_index {
+        None => "",
+        Some(last_nonnumeric_index) => &parser_state.remaining_input[last_nonnumeric_index..],
+    };
     match number_parse_result {
         Ok(number) => Ok(Expr::Number(number)),
         Err(_) => Err(make_parse_error(parser_state, "Expected number.")),
     }
 }
 
+fn parse_paren_expr(parser_state: &mut ParserState) -> Result<Expr, ParseError> {
+    println!("parse_paren_expr: {:?}", parser_state);
+
+    assert!(parser_state.next_character() == Some('('));
+    parser_state.consume_character();
+    let expr = parse_expr(parser_state)?;
+    if parser_state.next_character() != Some(')') {
+        return Err(make_parse_error(parser_state, "Expected ')'"));
+    }
+
+    parser_state.consume_character();
+    Ok(expr)
+}
+
 fn parse_primary(parser_state: &mut ParserState) -> Result<Expr, ParseError> {
-    parse_number(parser_state)
+    // Base case: We parse the rhs of a binary or unary operation
+    // Recursive case: We need to parse the rhs of a binary operation
+    println!("parse_primary: {:?}", parser_state);
+
+    let maybe_next_character = parser_state.next_character();
+    if maybe_next_character.is_none() {
+        return Err(make_parse_error(
+            parser_state,
+            "Expected primary expression",
+        ));
+    }
+    let next_character = maybe_next_character.unwrap();
+
+    if next_character == '(' {
+        return parse_paren_expr(parser_state);
+    }
+
+    return parse_number(parser_state);
+}
+
+fn parse_expr(parser_state: &mut ParserState) -> Result<Expr, ParseError> {
+    println!("parse_expr: {:?}", parser_state);
+    let primary = parse_primary(parser_state)?;
+
+    let maybe_next_character = parser_state.next_character();
+    if maybe_next_character.is_some() {
+        let next_character = maybe_next_character.unwrap();
+        if Op::is_binop(next_character) {
+            parse_binop_rhs(parser_state, primary, -1)
+        } else if next_character == ')' {
+            Ok(primary)
+        } else {
+            Err(make_parse_error(
+                parser_state,
+                "Expected a binary operator or ')'",
+            ))
+        }
+    } else {
+        Ok(primary)
+    }
 }
 
 pub fn parse(input: &str) -> Result<Expr, ParseError> {
@@ -107,5 +239,5 @@ pub fn parse(input: &str) -> Result<Expr, ParseError> {
         remaining_input: input,
     };
 
-    parse_primary(&mut parser_state)
+    parse_expr(&mut parser_state)
 }
