@@ -312,6 +312,7 @@ fn parse_primary(parser_state: &mut ParserState) -> Result<Expr, ParseError> {
     // Recursive case: We need to parse the rhs of a binary operation
     println!("parse_primary: {:?}", parser_state);
 
+    parser_state.consume_until_nonwhitespace();
     let maybe_next_character = parser_state.next_character();
     if maybe_next_character.is_none() {
         return Err(make_parse_error(
