@@ -4,6 +4,8 @@ use mold::parse;
 use std::env;
 use std::fmt;
 use std::fs;
+use std::path;
+extern crate dylib;
 extern crate term;
 
 // TODO proper error handling for user input
@@ -27,6 +29,24 @@ fn print_error<T: fmt::Display>(error: T) {
     let _ = terminal.reset();
 }
 
+fn external_eval(function_name: &str, value: &eval::Value) -> eval::Value {
+    use dylib::DynamicLibrary;
+
+    DynamicLibrary::prepend_search_path(path::Path::new("/Users/john/code/"));
+    match DynamicLibrary::open(Some(path::Path::new("libtest.dylib"))) {
+        Err(e) => panic!("Error opening dylib: {}", e),
+        Ok(lib) => {
+            let func: fn(&str, &eval::Value) -> eval::Value = unsafe {
+                match lib.symbol::<u8>("__mold__dispatch") {
+                    Err(e) => panic!("Could not find symbol: {}", e),
+                    Ok(f) => std::mem::transmute(f),
+                }
+            };
+            func(function_name, value)
+        }
+    }
+}
+
 fn main() {
     let script = get_script();
     let expr_result = parse::parse(&script);
@@ -41,7 +61,11 @@ fn main() {
     let mut environment = Environment::new();
     let eval_result = eval::eval(&expr, &mut environment);
     match eval_result {
-        Ok(value) => println!("{}", &value),
+        Ok(value) => {
+            println!("{}", &value);
+            let external_evaled = external_eval("sqrt", &value);
+            println!("{}", &external_evaled);
+        }
         Err(e) => return print_error(e),
-    }
+    };
 }

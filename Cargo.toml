@@ -8,4 +8,5 @@ edition = "2018"
 
 [dependencies]
 term = "*"
+dylib = "0.0.3"
 
