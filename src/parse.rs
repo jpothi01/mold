@@ -121,7 +121,7 @@ fn make_parse_error(parser_state: &ParserState, msg: &str) -> ParseError {
     }
 }
 
-type Identifier = String;
+pub type Identifier = String;
 
 pub enum Expr {
     BinOp {

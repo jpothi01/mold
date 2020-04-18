@@ -1,6 +1,8 @@
 use mold::eval;
+use mold::eval::Environment;
 use mold::parse;
 use std::env;
+use std::fmt;
 use std::fs;
 extern crate term;
 
@@ -17,21 +19,29 @@ fn get_script() -> String {
     }
 }
 
+fn print_error<T: fmt::Display>(error: T) {
+    let mut terminal = term::stdout().unwrap();
+    terminal.fg(term::color::RED).unwrap();
+    terminal.attr(term::Attr::Bold).unwrap();
+    println!("{}", error);
+    let _ = terminal.reset();
+}
+
 fn main() {
     let script = get_script();
     let expr_result = parse::parse(&script);
 
     if let Err(e) = &expr_result {
-        let mut terminal = term::stdout().unwrap();
-        terminal.fg(term::color::RED).unwrap();
-        terminal.attr(term::Attr::Bold).unwrap();
-        println!("{}", e);
-        let _ = terminal.reset();
-        return;
+        return print_error(e);
     }
 
     let expr = &expr_result.unwrap();
     println!("{:?}", &expr);
 
-    println!("{}", eval::eval(&expr))
+    let mut environment = Environment::new();
+    let eval_result = eval::eval(&expr, &mut environment);
+    match eval_result {
+        Ok(value) => println!("{}", &value),
+        Err(e) => return print_error(e),
+    }
 }
