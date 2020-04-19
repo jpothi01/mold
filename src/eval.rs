@@ -98,6 +98,9 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
                     eval(rest, environment)
                 }
             },
+            Statement::FunctionDefinition { name, args, body } => {
+                panic!("Function definition not yet supported")
+            }
         },
         Expr::Unit => Ok(Value::Unit),
     }

@@ -41,6 +41,11 @@ pub enum Statement {
         lhs: Box<AssignmentLHS>,
         rhs: Box<Expr>,
     },
+    FunctionDefinition {
+        name: Identifier,
+        args: Vec<Identifier>,
+        body: Box<Expr>,
+    },
 }
 
 #[derive(PartialEq)]
@@ -78,6 +83,9 @@ impl fmt::Debug for Expr {
             Expr::Statement(statement, rest) => match statement {
                 Statement::Assignment { lhs, rhs } => {
                     write!(f, "(assign {:?} {:?} {:?})", *lhs, *rhs, *rest)
+                }
+                Statement::FunctionDefinition { name, args, body } => {
+                    write!(f, "(fn {:?} ({:?}) {:?}", name, args, body)
                 }
             },
             Expr::Unit => write!(f, "()"),
