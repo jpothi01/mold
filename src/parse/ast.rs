@@ -80,14 +80,18 @@ impl fmt::Debug for Expr {
             Expr::BinOp { op, lhs, rhs } => write!(f, "({:?} {:?} {:?})", op, *lhs, *rhs),
             Expr::Number(n) => write!(f, "({:?})", n),
             Expr::Ident(i) => write!(f, "(id {:?})", i),
-            Expr::Statement(statement, rest) => match statement {
-                Statement::Assignment { lhs, rhs } => {
-                    write!(f, "(assign {:?} {:?} {:?})", *lhs, *rhs, *rest)
-                }
-                Statement::FunctionDefinition { name, args, body } => {
-                    write!(f, "(fn {:?} ({:?}) {:?}", name, args, body)
-                }
-            },
+            Expr::Statement(statement, rest) => {
+                match statement {
+                    Statement::Assignment { lhs, rhs } => {
+                        write!(f, "(assign {:?} {:?} {:?})", *lhs, *rhs, *rest)
+                    }
+                    Statement::FunctionDefinition { name, args, body } => {
+                        write!(f, "(fn {:?} ({:?}) {:?}", name, args, body)
+                    }
+                }?;
+
+                write!(f, " {:?}", rest)
+            }
             Expr::Unit => write!(f, "()"),
         }
     }

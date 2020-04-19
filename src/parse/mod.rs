@@ -335,7 +335,8 @@ fn parse_expr(parser_state: &mut ParserState) -> ParseResult {
         let next_character = maybe_next_character.unwrap();
         if Op::is_binop(next_character) {
             parse_binop_rhs(parser_state, primary, -1)
-        } else if next_character == ')' {
+        } else if next_character == ')' || next_character == '}' {
+            // End of a group or function
             Ok(primary)
         } else if next_character == '=' {
             // TODO: don't parse assignment lhs from primary expression, since this is a hack
@@ -467,6 +468,38 @@ mod tests {
                     })
                 },
                 Box::new(Expr::Unit)
+            ))
+        )
+    }
+
+    #[test]
+    fn parse_function_multiple_function_definitions() {
+        assert_eq!(
+            parse(
+                r#"
+                fn f(a) {
+                    a
+                }
+
+                fn g(b) {
+                    b
+                }
+            "#
+            ),
+            Ok(Expr::Statement(
+                Statement::FunctionDefinition {
+                    name: Identifier::from("f"),
+                    args: vec!(Identifier::from("a")),
+                    body: Box::new(Expr::Ident(Identifier::from("a")))
+                },
+                Box::new(Expr::Statement(
+                    Statement::FunctionDefinition {
+                        name: Identifier::from("g"),
+                        args: vec!(Identifier::from("b")),
+                        body: Box::new(Expr::Ident(Identifier::from("b")))
+                    },
+                    Box::new(Expr::Unit)
+                ))
             ))
         )
     }
