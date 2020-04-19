@@ -2,6 +2,7 @@ pub mod ast;
 
 use ast::Expr;
 use ast::Op;
+use ast::Statement;
 use std::fmt;
 use std::fmt::Debug;
 
@@ -222,11 +223,13 @@ fn parse_assignment(parser_state: &mut ParserState, lhs: Expr) -> Result<Expr, P
             parser_state.expect_character_and_consume('\n')?;
             let rest = parse_expr(parser_state)?;
 
-            Ok(Expr::Assignment {
-                lhs: Box::new(lhs),
-                rhs: Box::new(rhs),
-                rest: Box::new(rest),
-            })
+            Ok(Expr::Statement(
+                Statement::Assignment {
+                    lhs: Box::new(lhs),
+                    rhs: Box::new(rhs),
+                },
+                Box::new(rest),
+            ))
         }
         _ => Err(make_parse_error(
             parser_state,

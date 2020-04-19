@@ -63,8 +63,6 @@ fn main() {
     match eval_result {
         Ok(value) => {
             println!("{}", &value);
-            let external_evaled = external_eval("sqrt", &value);
-            println!("{}", &external_evaled);
         }
         Err(e) => return print_error(e),
     };

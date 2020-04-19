@@ -1,6 +1,7 @@
 use crate::parse::ast::Expr;
 use crate::parse::ast::Identifier;
 use crate::parse::ast::Op;
+use crate::parse::ast::Statement;
 use std::collections::HashMap;
 use std::fmt;
 use std::ops;
@@ -71,23 +72,25 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> Result<Val
                 ))
             }
         }
-        Expr::Assignment { lhs, rhs, rest } => match &**lhs {
-            Expr::Ident(id) => {
-                let rhs_value = eval(&**rhs, environment)?;
-                let variable_content = VariableContent {
-                    expr: &**rhs,
-                    value: rhs_value,
-                };
+        Expr::Statement(statement, rest) => match statement {
+            Statement::Assignment { lhs, rhs } => match &**lhs {
+                Expr::Ident(id) => {
+                    let rhs_value = eval(&**rhs, environment)?;
+                    let variable_content = VariableContent {
+                        expr: &**rhs,
+                        value: rhs_value,
+                    };
 
-                if !environment.contains_key(id.as_str()) {
-                    environment.insert(id.clone(), variable_content);
-                } else {
-                    *environment.get_mut(id.as_str()).unwrap() = variable_content;
+                    if !environment.contains_key(id.as_str()) {
+                        environment.insert(id.clone(), variable_content);
+                    } else {
+                        *environment.get_mut(id.as_str()).unwrap() = variable_content;
+                    }
+
+                    eval(rest, environment)
                 }
-
-                eval(rest, environment)
-            }
-            _ => unreachable!(),
+                _ => unreachable!(),
+            },
         },
     }
 }

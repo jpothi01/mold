@@ -34,6 +34,10 @@ impl fmt::Debug for Op {
 
 pub type Identifier = String;
 
+pub enum Statement {
+    Assignment { lhs: Box<Expr>, rhs: Box<Expr> },
+}
+
 pub enum Expr {
     BinOp {
         op: Op,
@@ -42,11 +46,7 @@ pub enum Expr {
     },
     Number(f64),
     Ident(Identifier),
-    Assignment {
-        lhs: Box<Expr>,
-        rhs: Box<Expr>,
-        rest: Box<Expr>,
-    },
+    Statement(Statement, Box<Expr>),
 }
 
 impl fmt::Debug for Expr {
@@ -55,9 +55,11 @@ impl fmt::Debug for Expr {
             Expr::BinOp { op, rhs, lhs } => write!(f, "({:?} {:?} {:?})", op, *rhs, *lhs),
             Expr::Number(n) => write!(f, "({:?})", n),
             Expr::Ident(i) => write!(f, "(id {:?})", i),
-            Expr::Assignment { lhs, rhs, rest } => {
-                write!(f, "(assign {:?} {:?} {:?})", *lhs, *rhs, *rest)
-            }
+            Expr::Statement(statement, rest) => match statement {
+                Statement::Assignment { lhs, rhs } => {
+                    write!(f, "(assign {:?} {:?} {:?})", *lhs, *rhs, *rest)
+                }
+            },
         }
     }
 }
