@@ -53,6 +53,7 @@ pub enum Expr {
     Number(f64),
     Ident(Identifier),
     Statement(Statement, Box<Expr>),
+    Unit,
 }
 
 #[derive(PartialEq)]
@@ -79,6 +80,7 @@ impl fmt::Debug for Expr {
                     write!(f, "(assign {:?} {:?} {:?})", *lhs, *rhs, *rest)
                 }
             },
+            Expr::Unit => write!(f, "()"),
         }
     }
 }

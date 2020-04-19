@@ -68,8 +68,7 @@ fn make_parse_error(parser_state: &ParserState, msg: &str) -> ParseError {
             .original_input
             .chars()
             .nth(original_input_substring_start_index)
-            .unwrap()
-            != '\n'
+            != Some('\n')
     {
         original_input_substring_start_index -= 1;
     }
@@ -80,8 +79,7 @@ fn make_parse_error(parser_state: &ParserState, msg: &str) -> ParseError {
             .original_input
             .chars()
             .nth(original_input_substring_end_index)
-            .unwrap()
-            != '\n'
+            != Some('\n')
     {
         original_input_substring_end_index += 1;
     }
@@ -222,8 +220,15 @@ fn parse_assignment(
     parser_state.consume_until_nonwhitespace();
 
     let rhs = parse_primary(parser_state)?;
-    parser_state.expect_character_and_consume('\n')?;
-    let rest = parse_expr(parser_state)?;
+
+    // TODO: this is messy. We want to support both with newline and without newline at the
+    // last statement of a Unit-returning Statement-expr.
+    let rest = if parser_state.remaining_input.len() >= 2 {
+        parser_state.expect_character_and_consume('\n')?;
+        parse_expr(parser_state)?
+    } else {
+        Expr::Unit
+    };
 
     Ok(Expr::Statement(
         Statement::Assignment {
@@ -377,6 +382,20 @@ mod tests {
                         rhs: Box::new(Expr::Ident(Identifier::from("b")))
                     })
                 ))
+            ))
+        )
+    }
+
+    #[test]
+    fn parse_void_statement() {
+        assert_eq!(
+            parse("a = 1"),
+            Ok(Expr::Statement(
+                Statement::Assignment {
+                    lhs: Box::new(AssignmentLHS::Single(Identifier::from("a"))),
+                    rhs: Box::new(Expr::Number(1f64))
+                },
+                Box::new(Expr::Unit)
             ))
         )
     }

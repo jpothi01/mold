@@ -20,6 +20,19 @@
                     "RUST_BACKTRACE": 1
                 }
             }
+        },
+        {
+            "type": "cargo",
+            "subcommand": "test",
+            "problemMatcher": [
+                "$rustc"
+            ],
+            "group": "test",
+            "options": {
+                "env": {
+                    "RUST_BACKTRACE": 0
+                }
+            },
         }
     ]
 }

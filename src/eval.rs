@@ -9,12 +9,14 @@ use std::ops;
 
 pub enum Value {
     Number(f64),
+    Unit,
 }
 
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Value::Number(n) => write!(f, "{}", n),
+            Value::Unit => write!(f, "()"),
         }
     }
 }
@@ -25,13 +27,18 @@ pub struct VariableContent<'a> {
 }
 pub type Environment<'a> = HashMap<Identifier, VariableContent<'a>>;
 
+type EvalResult = Result<Value, EvalError>;
+
+// TODO: this needs to return an eval result, I think
 impl ops::Add<&Value> for &Value {
     type Output = Value;
     fn add(self, rhs: &Value) -> Value {
         match self {
             Value::Number(x) => match rhs {
                 Value::Number(y) => Value::Number(x + y),
+                Value::Unit => panic!("Cannot use '+' operator for Unit"),
             },
+            Value::Unit => panic!("Cannot use '+' operator for Unit"),
         }
     }
 }
@@ -53,7 +60,7 @@ fn make_eval_error(_expr: &Expr, message: &str) -> EvalError {
     }
 }
 
-pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> Result<Value, EvalError> {
+pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult {
     match expr {
         Expr::BinOp { op, lhs, rhs } => match op {
             Op::Plus => {
@@ -92,5 +99,6 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> Result<Val
                 }
             },
         },
+        Expr::Unit => Ok(Value::Unit),
     }
 }
