@@ -65,15 +65,13 @@ type ParseResult = Result<Expr, ParseError>;
 fn make_parse_error(parser_state: &ParserState, msg: &str) -> ParseError {
     let error_character_index =
         parser_state.original_input.len() - parser_state.remaining_input.len();
-    let number_of_squiggles = error_character_index;
-    let squiggle_string = "~".repeat(number_of_squiggles);
 
     let mut original_input_substring_start_index = error_character_index;
     while original_input_substring_start_index > 0
         && parser_state
             .original_input
             .chars()
-            .nth(original_input_substring_start_index)
+            .nth(original_input_substring_start_index - 1)
             != Some('\n')
     {
         original_input_substring_start_index -= 1;
@@ -84,15 +82,18 @@ fn make_parse_error(parser_state: &ParserState, msg: &str) -> ParseError {
         && parser_state
             .original_input
             .chars()
-            .nth(original_input_substring_end_index)
+            .nth(original_input_substring_end_index + 1)
             != Some('\n')
     {
         original_input_substring_end_index += 1;
     }
 
+    let number_of_squiggles = error_character_index - original_input_substring_start_index;
+    let squiggle_string = "~".repeat(number_of_squiggles);
+
     let original_input_substring = &parser_state.original_input
         [original_input_substring_start_index..original_input_substring_end_index];
-    let context = format!("\t{}\n\t{}^", original_input_substring, squiggle_string);
+    let context = format!("\n{}\n{}^", original_input_substring, squiggle_string);
     ParseError {
         context: String::from(context),
         message: String::from(msg),
