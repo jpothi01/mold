@@ -1,3 +1,4 @@
+use crate::parse::ast::AssignmentLHS;
 use crate::parse::ast::Expr;
 use crate::parse::ast::Identifier;
 use crate::parse::ast::Op;
@@ -74,22 +75,21 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> Result<Val
         }
         Expr::Statement(statement, rest) => match statement {
             Statement::Assignment { lhs, rhs } => match &**lhs {
-                Expr::Ident(id) => {
+                AssignmentLHS::Single(identifier) => {
                     let rhs_value = eval(&**rhs, environment)?;
                     let variable_content = VariableContent {
                         expr: &**rhs,
                         value: rhs_value,
                     };
 
-                    if !environment.contains_key(id.as_str()) {
-                        environment.insert(id.clone(), variable_content);
+                    if !environment.contains_key(identifier.as_str()) {
+                        environment.insert(identifier.clone(), variable_content);
                     } else {
-                        *environment.get_mut(id.as_str()).unwrap() = variable_content;
+                        *environment.get_mut(identifier.as_str()).unwrap() = variable_content;
                     }
 
                     eval(rest, environment)
                 }
-                _ => unreachable!(),
             },
         },
     }

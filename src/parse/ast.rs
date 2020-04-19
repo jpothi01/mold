@@ -37,7 +37,10 @@ pub type Identifier = String;
 
 #[derive(PartialEq)]
 pub enum Statement {
-    Assignment { lhs: Box<Expr>, rhs: Box<Expr> },
+    Assignment {
+        lhs: Box<AssignmentLHS>,
+        rhs: Box<Expr>,
+    },
 }
 
 #[derive(PartialEq)]
@@ -50,6 +53,19 @@ pub enum Expr {
     Number(f64),
     Ident(Identifier),
     Statement(Statement, Box<Expr>),
+}
+
+#[derive(PartialEq)]
+pub enum AssignmentLHS {
+    Single(Identifier),
+}
+
+impl fmt::Debug for AssignmentLHS {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AssignmentLHS::Single(identifier) => write!(f, "{:?}", identifier),
+        }
+    }
 }
 
 impl fmt::Debug for Expr {

@@ -1,5 +1,6 @@
 pub mod ast;
 
+use ast::AssignmentLHS;
 use ast::Expr;
 use ast::Op;
 use ast::Statement;
@@ -210,32 +211,27 @@ fn parse_identifier(parser_state: &mut ParserState) -> Result<Expr, ParseError> 
     Ok(Expr::Ident(String::from(identifier_substring)))
 }
 
-fn parse_assignment(parser_state: &mut ParserState, lhs: Expr) -> Result<Expr, ParseError> {
+fn parse_assignment(
+    parser_state: &mut ParserState,
+    lhs: AssignmentLHS,
+) -> Result<Expr, ParseError> {
     println!("parse_assignment: {:?}", parser_state);
 
     assert!(parser_state.next_character() == Some('='));
     parser_state.consume_character();
     parser_state.consume_until_nonwhitespace();
 
-    match &lhs {
-        Expr::Ident(_) => {
-            let rhs = parse_primary(parser_state)?;
-            parser_state.expect_character_and_consume('\n')?;
-            let rest = parse_expr(parser_state)?;
+    let rhs = parse_primary(parser_state)?;
+    parser_state.expect_character_and_consume('\n')?;
+    let rest = parse_expr(parser_state)?;
 
-            Ok(Expr::Statement(
-                Statement::Assignment {
-                    lhs: Box::new(lhs),
-                    rhs: Box::new(rhs),
-                },
-                Box::new(rest),
-            ))
-        }
-        _ => Err(make_parse_error(
-            parser_state,
-            "Left-hand side of assignment must be identifier",
-        )),
-    }
+    Ok(Expr::Statement(
+        Statement::Assignment {
+            lhs: Box::new(lhs),
+            rhs: Box::new(rhs),
+        },
+        Box::new(rest),
+    ))
 }
 
 fn parse_paren_expr(parser_state: &mut ParserState) -> Result<Expr, ParseError> {
@@ -291,7 +287,16 @@ fn parse_expr(parser_state: &mut ParserState) -> Result<Expr, ParseError> {
         } else if next_character == ')' {
             Ok(primary)
         } else if next_character == '=' {
-            parse_assignment(parser_state, primary)
+            // TODO: don't parse assignment lhs from primary expression, since this is a hack
+            match primary {
+                Expr::Ident(identifier) => {
+                    parse_assignment(parser_state, AssignmentLHS::Single(identifier))
+                }
+                _ => Err(make_parse_error(
+                    parser_state,
+                    "Left-hand side of assignment must be a variable name",
+                )),
+            }
         } else {
             Err(make_parse_error(
                 parser_state,
@@ -358,12 +363,12 @@ mod tests {
             parse("a = 1\nb = 2\na + b"),
             Ok(Expr::Statement(
                 Statement::Assignment {
-                    lhs: Box::new(Expr::Ident(Identifier::from("a"))),
+                    lhs: Box::new(AssignmentLHS::Single(Identifier::from("a"))),
                     rhs: Box::new(Expr::Number(1f64))
                 },
                 Box::new(Expr::Statement(
                     Statement::Assignment {
-                        lhs: Box::new(Expr::Ident(Identifier::from("b"))),
+                        lhs: Box::new(AssignmentLHS::Single(Identifier::from("b"))),
                         rhs: Box::new(Expr::Number(2f64))
                     },
                     Box::new(Expr::BinOp {
