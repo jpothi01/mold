@@ -1,5 +1,6 @@
 use std::fmt;
 
+#[derive(PartialEq)]
 pub enum Op {
     Plus,
 }
@@ -34,10 +35,12 @@ impl fmt::Debug for Op {
 
 pub type Identifier = String;
 
+#[derive(PartialEq)]
 pub enum Statement {
     Assignment { lhs: Box<Expr>, rhs: Box<Expr> },
 }
 
+#[derive(PartialEq)]
 pub enum Expr {
     BinOp {
         op: Op,
@@ -52,7 +55,7 @@ pub enum Expr {
 impl fmt::Debug for Expr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Expr::BinOp { op, rhs, lhs } => write!(f, "({:?} {:?} {:?})", op, *rhs, *lhs),
+            Expr::BinOp { op, lhs, rhs } => write!(f, "({:?} {:?} {:?})", op, *lhs, *rhs),
             Expr::Number(n) => write!(f, "({:?})", n),
             Expr::Ident(i) => write!(f, "(id {:?})", i),
             Expr::Statement(statement, rest) => match statement {

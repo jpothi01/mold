@@ -6,7 +6,7 @@ use ast::Statement;
 use std::fmt;
 use std::fmt::Debug;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct ParseError {
     context: String,
     message: String,
@@ -310,4 +310,69 @@ pub fn parse(input: &str) -> Result<Expr, ParseError> {
     };
 
     parse_expr(&mut parser_state)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ast::*;
+    use super::*;
+    #[test]
+    fn parse_simple_binary_op() {
+        assert_eq!(
+            parse("1+2"),
+            Ok(Expr::BinOp {
+                op: Op::Plus,
+                lhs: Box::new(Expr::Number(1f64)),
+                rhs: Box::new(Expr::Number(2f64))
+            })
+        );
+    }
+
+    #[test]
+    fn parse_grouped_ops() {
+        assert_eq!(
+            parse("1+((2+3)+4)+5"),
+            Ok(Expr::BinOp {
+                op: Op::Plus,
+                lhs: Box::new(Expr::BinOp {
+                    op: Op::Plus,
+                    lhs: Box::new(Expr::Number(1f64)),
+                    rhs: Box::new(Expr::BinOp {
+                        op: Op::Plus,
+                        lhs: Box::new(Expr::BinOp {
+                            op: Op::Plus,
+                            lhs: Box::new(Expr::Number(2f64)),
+                            rhs: Box::new(Expr::Number(3f64))
+                        }),
+                        rhs: Box::new(Expr::Number(4f64))
+                    }),
+                }),
+                rhs: Box::new(Expr::Number(5f64)),
+            })
+        );
+    }
+
+    #[test]
+    fn parse_non_void_statement() {
+        assert_eq!(
+            parse("a = 1\nb = 2\na + b"),
+            Ok(Expr::Statement(
+                Statement::Assignment {
+                    lhs: Box::new(Expr::Ident(Identifier::from("a"))),
+                    rhs: Box::new(Expr::Number(1f64))
+                },
+                Box::new(Expr::Statement(
+                    Statement::Assignment {
+                        lhs: Box::new(Expr::Ident(Identifier::from("b"))),
+                        rhs: Box::new(Expr::Number(2f64))
+                    },
+                    Box::new(Expr::BinOp {
+                        op: Op::Plus,
+                        lhs: Box::new(Expr::Ident(Identifier::from("a"))),
+                        rhs: Box::new(Expr::Ident(Identifier::from("b")))
+                    })
+                ))
+            ))
+        )
+    }
 }
