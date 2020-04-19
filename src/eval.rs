@@ -1,6 +1,6 @@
-use crate::parse::Expr;
-use crate::parse::Identifier;
-use crate::parse::Op;
+use crate::parse::ast::Expr;
+use crate::parse::ast::Identifier;
+use crate::parse::ast::Op;
 use std::collections::HashMap;
 use std::fmt;
 use std::ops;
