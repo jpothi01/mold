@@ -1,0 +1,28 @@
+
+// To accomplish this:
+// Support for mold strings
+// Support jitting rust functions
+// - parse the rust function signature to find the function name and argument list
+// - parse the rest of the rust function as an opaque blob
+// - generate dispatch entry point based on function definition
+// - invoke rust compiler, linking against mold
+// - invoke the dispatch method for rust function calls
+// Extra credit:
+// - opaque rust pointers inside mold::Value to retain state between rust calls
+
+rust fn read_file(s) {
+    // arguments are always of type mut& mold::Value and the return type is always mold::Value
+    use std::fs::File;
+
+    let filename = match s {
+        mold::Value::String(s) => s.as_str(),
+        _ => panic!("s must be a string")
+    };
+
+    let f = File::open(filename);
+    let contents = String::new();
+    f.read_to_string(contents);
+    mold::Value::String(contents);
+}
+
+read_file("foo.txt")

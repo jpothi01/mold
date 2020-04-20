@@ -275,7 +275,8 @@ fn parse_primary(parser_state: &mut ParserState) -> ParseResult {
     }
 
     if next_character.is_alphabetic() {
-        return Ok(Expr::Ident(parse_identifier(parser_state)?));
+        let identifier = parse_identifier(parser_state)?;
+        return Ok(Expr::Ident(identifier));
     }
 
     return parse_number(parser_state);
@@ -503,5 +504,16 @@ mod tests {
                 ))
             ))
         )
+    }
+
+    #[test]
+    fn parse_function_call() {
+        assert_eq!(
+            parse("a(1, 2)"),
+            Ok(Expr::FunctionCall {
+                name: Identifier::from("a"),
+                args: vec!(Box::new(Expr::Number(1f64)), Box::new(Expr::Number(2f64)),)
+            })
+        );
     }
 }

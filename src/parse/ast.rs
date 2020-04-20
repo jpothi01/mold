@@ -58,6 +58,10 @@ pub enum Expr {
     Number(f64),
     Ident(Identifier),
     Statement(Statement, Box<Expr>),
+    FunctionCall {
+        name: Identifier,
+        args: Vec<Box<Expr>>,
+    },
     Unit,
 }
 
@@ -77,13 +81,13 @@ impl fmt::Debug for AssignmentLHS {
 impl fmt::Debug for Expr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Expr::BinOp { op, lhs, rhs } => write!(f, "({:?} {:?} {:?})", op, *lhs, *rhs),
+            Expr::BinOp { op, lhs, rhs } => write!(f, "({:?} {:?} {:?})", op, lhs, rhs),
             Expr::Number(n) => write!(f, "({:?})", n),
             Expr::Ident(i) => write!(f, "(id {:?})", i),
             Expr::Statement(statement, rest) => {
                 match statement {
                     Statement::Assignment { lhs, rhs } => {
-                        write!(f, "(assign {:?} {:?} {:?})", *lhs, *rhs, *rest)
+                        write!(f, "(assign {:?} {:?} {:?})", lhs, rhs, rest)
                     }
                     Statement::FunctionDefinition { name, args, body } => {
                         write!(f, "(fn {:?} ({:?}) {:?}", name, args, body)
@@ -91,6 +95,13 @@ impl fmt::Debug for Expr {
                 }?;
 
                 write!(f, " {:?}", rest)
+            }
+            Expr::FunctionCall { name, args } => {
+                write!(f, "(call \"{:?}\"", name)?;
+                for arg in args {
+                    write!(f, " {:?}", arg)?;
+                }
+                write!(f, ")")
             }
             Expr::Unit => write!(f, "()"),
         }

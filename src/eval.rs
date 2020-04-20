@@ -102,6 +102,7 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
                 panic!("Function definition not yet supported")
             }
         },
+        Expr::FunctionCall { name, args } => panic!("Function call not yet supported"),
         Expr::Unit => Ok(Value::Unit),
     }
 }
