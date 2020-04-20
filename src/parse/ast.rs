@@ -97,7 +97,7 @@ impl fmt::Debug for Expr {
                 write!(f, " {:?}", rest)
             }
             Expr::FunctionCall { name, args } => {
-                write!(f, "(call \"{:?}\"", name)?;
+                write!(f, "(call {:?}", name)?;
                 for arg in args {
                     write!(f, " {:?}", arg)?;
                 }

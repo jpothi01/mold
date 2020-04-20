@@ -300,6 +300,7 @@ fn parse_primary(parser_state: &mut ParserState) -> ParseResult {
 
     if next_character.is_alphabetic() {
         let identifier = parse_identifier(parser_state)?;
+        parser_state.consume_until_nonwhitespace();
         let maybe_next_character = parser_state.next_character();
         if maybe_next_character != Some('(') {
             return Ok(Expr::Ident(identifier));
