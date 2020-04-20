@@ -60,7 +60,7 @@ pub enum Expr {
     Statement(Statement, Box<Expr>),
     FunctionCall {
         name: Identifier,
-        args: Vec<Box<Expr>>,
+        args: Vec<Expr>,
     },
     Unit,
 }

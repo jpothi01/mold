@@ -54,6 +54,11 @@ impl<'a> ParserState<'a> {
     }
 }
 
+// Does this character always terminate an expression?
+fn is_expression_terminator(c: char) -> bool {
+    c == ')' || c == '}' || c == ','
+}
+
 impl fmt::Display for ParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}\n {}", &self.message, &self.context)
@@ -118,8 +123,7 @@ fn parse_binop_rhs(
         let next_character = maybe_next_character.unwrap();
         let maybe_op = Op::from_char(next_character);
         if maybe_op.is_none() {
-            // TODO: probably need to define shit like this more formally
-            if next_character != ')' && next_character != '}' && !next_character.is_whitespace() {
+            if !is_expression_terminator(next_character) && !next_character.is_whitespace() {
                 return Err(make_parse_error(parser_state, "Expected operator."));
             }
 
@@ -258,6 +262,26 @@ fn parse_paren_expr(parser_state: &mut ParserState) -> ParseResult {
     Ok(expr)
 }
 
+fn parse_function_call_args(parser_state: &mut ParserState) -> Result<Vec<Expr>, ParseError> {
+    println!("parse_function_call_args: {:?}", parser_state);
+
+    assert!(parser_state.next_character() == Some('('));
+    parser_state.consume_character();
+
+    let mut args: Vec<Expr> = Vec::new();
+    while parser_state.next_character() != Some(')') {
+        if args.len() > 0 {
+            parser_state.expect_character_and_consume(',')?;
+        }
+        parser_state.consume_until_nonwhitespace();
+        args.push(parse_expr(parser_state)?);
+        parser_state.consume_until_nonwhitespace();
+    }
+
+    parser_state.expect_character_and_consume(')')?;
+    Ok(args)
+}
+
 fn parse_primary(parser_state: &mut ParserState) -> ParseResult {
     // Base case: We parse the rhs of a binary or unary operation
     // Recursive case: We need to parse the rhs of a binary operation
@@ -276,7 +300,16 @@ fn parse_primary(parser_state: &mut ParserState) -> ParseResult {
 
     if next_character.is_alphabetic() {
         let identifier = parse_identifier(parser_state)?;
-        return Ok(Expr::Ident(identifier));
+        let maybe_next_character = parser_state.next_character();
+        if maybe_next_character != Some('(') {
+            return Ok(Expr::Ident(identifier));
+        }
+
+        let function_call_args = parse_function_call_args(parser_state)?;
+        return Ok(Expr::FunctionCall {
+            name: identifier,
+            args: function_call_args,
+        });
     }
 
     return parse_number(parser_state);
@@ -337,8 +370,7 @@ fn parse_expr(parser_state: &mut ParserState) -> ParseResult {
         let next_character = maybe_next_character.unwrap();
         if Op::is_binop(next_character) {
             parse_binop_rhs(parser_state, primary, -1)
-        } else if next_character == ')' || next_character == '}' {
-            // End of a group or function
+        } else if is_expression_terminator(next_character) {
             Ok(primary)
         } else if next_character == '=' {
             // TODO: don't parse assignment lhs from primary expression, since this is a hack
@@ -354,7 +386,7 @@ fn parse_expr(parser_state: &mut ParserState) -> ParseResult {
         } else {
             Err(make_parse_error(
                 parser_state,
-                "Expected a binary operator or ')'",
+                "Expected a binary operator, '=', or end of expression",
             ))
         }
     } else {
@@ -512,8 +544,63 @@ mod tests {
             parse("a(1, 2)"),
             Ok(Expr::FunctionCall {
                 name: Identifier::from("a"),
-                args: vec!(Box::new(Expr::Number(1f64)), Box::new(Expr::Number(2f64)),)
+                args: vec!(Expr::Number(1f64), Expr::Number(2f64),)
             })
+        );
+    }
+
+    #[test]
+    fn parse_function_call_with_complex_expression() {
+        assert_eq!(
+            parse("a(1+2, (3 + 4) + 5)"),
+            Ok(Expr::FunctionCall {
+                name: Identifier::from("a"),
+                args: vec!(
+                    Expr::BinOp {
+                        op: Op::Plus,
+                        lhs: Box::new(Expr::Number(1f64)),
+                        rhs: Box::new(Expr::Number(2f64)),
+                    },
+                    Expr::BinOp {
+                        op: Op::Plus,
+                        lhs: Box::new(Expr::BinOp {
+                            op: Op::Plus,
+                            lhs: Box::new(Expr::Number(3f64)),
+                            rhs: Box::new(Expr::Number(4f64)),
+                        }),
+                        rhs: Box::new(Expr::Number(5f64)),
+                    }
+                )
+            })
+        );
+    }
+
+    #[test]
+    fn parse_function_definition_then_call() {
+        assert_eq!(
+            parse(
+                r#"
+            fn f(x) {
+                x + 1
+            }
+            
+            f(1)"#
+            ),
+            Ok(Expr::Statement(
+                Statement::FunctionDefinition {
+                    name: Identifier::from("f"),
+                    args: vec!(Identifier::from("x")),
+                    body: Box::new(Expr::BinOp {
+                        op: Op::Plus,
+                        lhs: Box::new(Expr::Ident(Identifier::from("x"))),
+                        rhs: Box::new(Expr::Number(1f64))
+                    })
+                },
+                Box::new(Expr::FunctionCall {
+                    name: Identifier::from("f"),
+                    args: vec!(Expr::Number(1f64))
+                })
+            ))
         );
     }
 }
