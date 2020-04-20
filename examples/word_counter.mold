@@ -1,0 +1,8 @@
+s = "This is a string used for the dumbest program written in mold"
+
+count = 0
+for c in s {
+    count = count + 1
+}
+
+count

@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::fmt;
 use std::ops;
 
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Value<'a> {
     Number(f64),
     Function {
@@ -60,7 +60,7 @@ impl<'a> ops::Add<Value<'a>> for Value<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct EvalError {
     message: String,
 }
@@ -184,5 +184,17 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
             }
         }
         Expr::Unit => Ok(Value::Unit),
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    fn trivial_evaluation() {
+        assert_eq!(
+            eval(&Expr::Number(1f64), &mut Environment::new()),
+            Ok(Value::Number(1f64))
+        );
     }
 }

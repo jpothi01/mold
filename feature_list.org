@@ -1,0 +1,24 @@
+* Language features
+** P1: Required for word counter
+*** DONE numbers
+*** DONE variables
+*** DONE functions
+*** TODO strings
+*** TODO iteration
+** P2
+*** TODO arrays
+*** TODO dictionaries
+*** TODO collection utilities
+*** TODO structs
+*** TODO enums
+*** TODO pattern matching
+*** TODO modules
+
+* Rust interop
+** TODO Manual-written dispatch module
+** TODO inline `rust fn`
+
+* Tooling
+** TODO language server
+** TODO formatter
+

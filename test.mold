@@ -1,9 +1,7 @@
-fn f(a) {
-    a + 1
+fn get_the_number(a, b) {
+    a + (b + 2)
 }
 
-fn g(x, y) {
-    x + y
-}
-
-g (1, f(2))
+x = 1
+y = 2
+8
