@@ -7,38 +7,55 @@ use std::collections::HashMap;
 use std::fmt;
 use std::ops;
 
-pub enum Value {
+#[derive(Clone)]
+pub enum Value<'a> {
     Number(f64),
+    Function {
+        args: Vec<Identifier>,
+        body: &'a Expr,
+    },
     Unit,
 }
 
-impl fmt::Display for Value {
+impl<'a> fmt::Display for Value<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Value::Number(n) => write!(f, "{}", n),
+            Value::Function { args, body } => {
+                write!(f, "(fn ");
+                for arg in args {
+                    write!(f, " ({})", arg);
+                }
+
+                write!(f, " {:?})", body)
+            }
             Value::Unit => write!(f, "()"),
         }
     }
 }
 
+// Remember, the ast is long-lived and its lifetime strictly exceeds
+// that of any evaluation. This is diferent from the lifetime of values
+// themselves, which are dynmically created as the program runs.
+#[derive(Clone)]
 pub struct VariableContent<'a> {
     expr: &'a Expr,
-    value: Value,
+    value: Value<'a>,
 }
 pub type Environment<'a> = HashMap<Identifier, VariableContent<'a>>;
 
-type EvalResult = Result<Value, EvalError>;
+type EvalResult<'a> = Result<Value<'a>, EvalError>;
 
 // TODO: this needs to return an eval result, I think
-impl ops::Add<&Value> for &Value {
-    type Output = Value;
-    fn add(self, rhs: &Value) -> Value {
+impl<'a> ops::Add<Value<'a>> for Value<'a> {
+    type Output = Value<'a>;
+    fn add(self, rhs: Value) -> Value {
         match self {
             Value::Number(x) => match rhs {
                 Value::Number(y) => Value::Number(x + y),
-                Value::Unit => panic!("Cannot use '+' operator for Unit"),
+                _ => panic!("Cannot use '+' operator for Unit"),
             },
-            Value::Unit => panic!("Cannot use '+' operator for Unit"),
+            _ => panic!("Cannot use '+' operator for Unit"),
         }
     }
 }
@@ -60,13 +77,13 @@ fn make_eval_error(_expr: &Expr, message: &str) -> EvalError {
     }
 }
 
-pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult {
+pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult<'a> {
     match expr {
         Expr::BinOp { op, lhs, rhs } => match op {
             Op::Plus => {
                 let lhs_value = eval(&*lhs, environment)?;
                 let rhs_value = eval(&*rhs, environment)?;
-                Ok(&lhs_value + &rhs_value)
+                Ok(lhs_value + rhs_value)
             }
         },
         Expr::Number(number) => Ok(Value::Number(*number)),
@@ -99,10 +116,71 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
                 }
             },
             Statement::FunctionDefinition { name, args, body } => {
-                panic!("Function definition not yet supported")
+                let variable_content = VariableContent {
+                    expr: &**body,
+                    value: Value::Function {
+                        args: args.clone(),
+                        body: &**body,
+                    },
+                };
+                if !environment.contains_key(name.as_str()) {
+                    environment.insert(name.clone(), variable_content);
+                } else {
+                    *environment.get_mut(name.as_str()).unwrap() = variable_content;
+                }
+
+                eval(rest, environment)
             }
         },
-        Expr::FunctionCall { name, args } => panic!("Function call not yet supported"),
+        Expr::FunctionCall { name, args } => {
+            if environment.contains_key(name.as_str()) {
+                let function_definition = &environment[name.as_str()];
+                let call_args = args;
+                match function_definition.value.clone() {
+                    Value::Function { args, body } => {
+                        let def_args = args;
+                        if call_args.len() != def_args.len() {
+                            Err(make_eval_error(
+                                expr,
+                                format!(
+                                    "Expected {} arguments, got {}",
+                                    def_args.len(),
+                                    call_args.len()
+                                )
+                                .as_str(),
+                            ))
+                        } else {
+                            let mut function_environment = environment.clone();
+                            let num_args = def_args.len();
+                            for i in 0..num_args {
+                                let arg_expr = &call_args[i];
+                                let variable_content = VariableContent {
+                                    expr: arg_expr,
+                                    value: eval(arg_expr, environment)?,
+                                };
+
+                                // TODO: there's got to be a simpler way to do this
+                                if !environment.contains_key(name.as_str()) {
+                                    environment.insert(name.clone(), variable_content);
+                                } else {
+                                    *environment.get_mut(name.as_str()).unwrap() = variable_content;
+                                }
+                            }
+                            eval(body, &mut function_environment)
+                        }
+                    }
+                    _ => Err(make_eval_error(
+                        expr,
+                        format!("Expected {} to be a function", function_definition.value).as_str(),
+                    )),
+                }
+            } else {
+                Err(make_eval_error(
+                    expr,
+                    format!("Undefined function {}", name).as_str(),
+                ))
+            }
+        }
         Expr::Unit => Ok(Value::Unit),
     }
 }
