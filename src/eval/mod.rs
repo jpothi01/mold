@@ -153,6 +153,7 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
                             let mut function_environment = environment.clone();
                             let num_args = def_args.len();
                             for i in 0..num_args {
+                                let arg_name = def_args[i].clone();
                                 let arg_expr = &call_args[i];
                                 let variable_content = VariableContent {
                                     expr: arg_expr,
@@ -160,10 +161,11 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
                                 };
 
                                 // TODO: there's got to be a simpler way to do this
-                                if !environment.contains_key(name.as_str()) {
-                                    environment.insert(name.clone(), variable_content);
+                                if !function_environment.contains_key(arg_name.as_str()) {
+                                    function_environment.insert(arg_name.clone(), variable_content);
                                 } else {
-                                    *environment.get_mut(name.as_str()).unwrap() = variable_content;
+                                    *function_environment.get_mut(arg_name.as_str()).unwrap() =
+                                        variable_content;
                                 }
                             }
                             eval(body, &mut function_environment)
