@@ -38,7 +38,7 @@ pub type Identifier = String;
 #[derive(PartialEq)]
 pub enum Statement {
     Assignment {
-        lhs: Box<AssignmentLHS>,
+        lhs: AssignmentLHS,
         rhs: Box<Expr>,
     },
     FunctionDefinition {
@@ -56,6 +56,7 @@ pub enum Expr {
         lhs: Box<Expr>,
     },
     Number(f64),
+    String(String),
     Ident(Identifier),
     Statement(Statement, Box<Expr>),
     FunctionCall {
@@ -83,6 +84,7 @@ impl fmt::Debug for Expr {
         match self {
             Expr::BinOp { op, lhs, rhs } => write!(f, "({:?} {:?} {:?})", op, lhs, rhs),
             Expr::Number(n) => write!(f, "({:?})", n),
+            Expr::String(s) => write!(f, "({:?}", s),
             Expr::Ident(i) => write!(f, "(id {:?})", i),
             Expr::Statement(statement, rest) => {
                 match statement {

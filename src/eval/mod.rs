@@ -14,6 +14,7 @@ pub enum Value<'a> {
         args: Vec<Identifier>,
         body: &'a Expr,
     },
+    String(String),
     Unit,
 }
 
@@ -22,13 +23,14 @@ impl<'a> fmt::Display for Value<'a> {
         match self {
             Value::Number(n) => write!(f, "{}", n),
             Value::Function { args, body } => {
-                write!(f, "(fn ");
+                write!(f, "(fn ")?;
                 for arg in args {
-                    write!(f, " ({})", arg);
+                    write!(f, " ({})", arg)?;
                 }
 
                 write!(f, " {:?})", body)
             }
+            Value::String(s) => write!(f, "{}", s),
             Value::Unit => write!(f, "()"),
         }
     }
@@ -87,6 +89,7 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
             }
         },
         Expr::Number(number) => Ok(Value::Number(*number)),
+        Expr::String(s) => Ok(Value::String(s.clone())),
         Expr::Ident(id) => {
             if environment.contains_key(id.as_str()) {
                 eval(environment[id].expr, environment)
@@ -98,7 +101,7 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
             }
         }
         Expr::Statement(statement, rest) => match statement {
-            Statement::Assignment { lhs, rhs } => match &**lhs {
+            Statement::Assignment { lhs, rhs } => match lhs {
                 AssignmentLHS::Single(identifier) => {
                     let rhs_value = eval(&**rhs, environment)?;
                     let variable_content = VariableContent {

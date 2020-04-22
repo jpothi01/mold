@@ -1,0 +1,3 @@
+* Strings
+** TODO string literals are copied upon assignment
+** TODO support escape sequences

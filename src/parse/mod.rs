@@ -241,7 +241,7 @@ fn parse_assignment(parser_state: &mut ParserState, lhs: AssignmentLHS) -> Parse
 
     Ok(Expr::Statement(
         Statement::Assignment {
-            lhs: Box::new(lhs),
+            lhs: lhs,
             rhs: Box::new(rhs),
         },
         Box::new(rest),
@@ -282,6 +282,29 @@ fn parse_function_call_args(parser_state: &mut ParserState) -> Result<Vec<Expr>,
     Ok(args)
 }
 
+fn parse_string_literal(parser_state: &mut ParserState) -> ParseResult {
+    println!("parse_string_literal: {:?}", parser_state);
+
+    assert!(parser_state.next_character() == Some('"'));
+    parser_state.consume_character();
+
+    let maybe_string_end_index = parser_state.remaining_input.find('"');
+    match maybe_string_end_index {
+        None => Err(make_parse_error(
+            parser_state,
+            "Unterminated string literal",
+        )),
+        Some(string_end_index) => {
+            let string_literal = &parser_state.remaining_input[..string_end_index];
+            // Consume the string itself
+            parser_state.consume_n_characters(string_end_index);
+            // Consume the terminating '"'
+            parser_state.consume_character();
+            Ok(Expr::String(String::from(string_literal)))
+        }
+    }
+}
+
 fn parse_primary(parser_state: &mut ParserState) -> ParseResult {
     // Base case: We parse the rhs of a binary or unary operation
     // Recursive case: We need to parse the rhs of a binary operation
@@ -296,6 +319,10 @@ fn parse_primary(parser_state: &mut ParserState) -> ParseResult {
 
     if next_character == '(' {
         return parse_paren_expr(parser_state);
+    }
+
+    if next_character == '"' {
+        return parse_string_literal(parser_state);
     }
 
     if next_character.is_alphabetic() {
@@ -450,12 +477,12 @@ mod tests {
             parse("a = 1\nb = 2\na + b"),
             Ok(Expr::Statement(
                 Statement::Assignment {
-                    lhs: Box::new(AssignmentLHS::Single(Identifier::from("a"))),
+                    lhs: AssignmentLHS::Single(Identifier::from("a")),
                     rhs: Box::new(Expr::Number(1f64))
                 },
                 Box::new(Expr::Statement(
                     Statement::Assignment {
-                        lhs: Box::new(AssignmentLHS::Single(Identifier::from("b"))),
+                        lhs: AssignmentLHS::Single(Identifier::from("b")),
                         rhs: Box::new(Expr::Number(2f64))
                     },
                     Box::new(Expr::BinOp {
@@ -474,7 +501,7 @@ mod tests {
             parse("a = 1"),
             Ok(Expr::Statement(
                 Statement::Assignment {
-                    lhs: Box::new(AssignmentLHS::Single(Identifier::from("a"))),
+                    lhs: AssignmentLHS::Single(Identifier::from("a")),
                     rhs: Box::new(Expr::Number(1f64))
                 },
                 Box::new(Expr::Unit)
@@ -601,6 +628,20 @@ mod tests {
                     name: Identifier::from("f"),
                     args: vec!(Expr::Number(1f64))
                 })
+            ))
+        );
+    }
+
+    #[test]
+    fn parse_string_literal() {
+        assert_eq!(
+            parse("a = \"hello, mold\""),
+            Ok(Expr::Statement(
+                Statement::Assignment {
+                    lhs: AssignmentLHS::Single(Identifier::from("a")),
+                    rhs: Box::new(Expr::String(String::from("hello, mold")))
+                },
+                Box::new(Expr::Unit)
             ))
         );
     }
