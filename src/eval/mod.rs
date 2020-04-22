@@ -55,7 +55,11 @@ impl<'a> ops::Add<Value<'a>> for Value<'a> {
         match self {
             Value::Number(x) => match rhs {
                 Value::Number(y) => Value::Number(x + y),
-                _ => panic!("Cannot use '+' operator for Unit"),
+                _ => panic!("Mismatched types for '+'"),
+            },
+            Value::String(s1) => match rhs {
+                Value::String(s2) => Value::String(s1 + s2.as_str()),
+                _ => panic!("Mismatched types for '+'"),
             },
             _ => panic!("Cannot use '+' operator for Unit"),
         }
@@ -198,6 +202,21 @@ mod test {
         assert_eq!(
             eval(&Expr::Number(1f64), &mut Environment::new()),
             Ok(Value::Number(1f64))
+        );
+    }
+
+    #[test]
+    fn string_concatenation() {
+        assert_eq!(
+            eval(
+                &Expr::BinOp {
+                    op: Op::Plus,
+                    lhs: Box::new(Expr::String(String::from("hello, "))),
+                    rhs: Box::new(Expr::String(String::from("world"))),
+                },
+                &mut Environment::new()
+            ),
+            Ok(Value::String(String::from("hello, world")))
         );
     }
 }
