@@ -36,6 +36,15 @@ impl<'a> fmt::Display for Value<'a> {
     }
 }
 
+impl<'a> Value<'a> {
+    fn is_method(&self) -> bool {
+        match self {
+            Value::Function { args, body } => args.get(0).is_some() && args[0] == "self",
+            _ => false,
+        }
+    }
+}
+
 // Remember, the ast is long-lived and its lifetime strictly exceeds
 // that of any evaluation. This is diferent from the lifetime of values
 // themselves, which are dynmically created as the program runs.
@@ -190,7 +199,71 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
                 ))
             }
         }
-        Expr::MethodCall { name, target, args } => panic!("MethoCall not yet supported"),
+        Expr::MethodCall { name, target, args } => {
+            let target_value = eval(target, environment)?;
+            let call_args = args;
+
+            // This code is quite messy, please clean it up.
+            if environment.contains_key(name.as_str()) {
+                let function_definition = &environment[name.as_str()];
+                if !function_definition.value.is_method() {
+                    return Err(make_eval_error(expr, format!("Expected {} to be a method", name).as_str()));
+                }
+
+                match function_definition.value.clone() {
+                    Value::Function { args, body } => {
+                        let def_args = args;
+                        if call_args.len() + 1 != def_args.len() {
+                            Err(make_eval_error(
+                                expr,
+                                format!(
+                                    "Expected {} arguments, got {}",
+                                    def_args.len(),
+                                    call_args.len()
+                                )
+                                .as_str(),
+                            ))
+                        } else {
+                            let mut function_environment = environment.clone();
+                            let num_args = def_args.len();
+                            for i in 0..num_args {
+                                let arg_name = def_args[i].clone();
+
+                                let (arg_expr, arg_value) = if i == 0 {
+                                    (&**target, target_value)
+                                } else {
+                                    let arg_expr = &call_args[i-1];
+                                    (arg_expr, eval(arg_expr, environment)?)
+                                }
+                                let arg_expr = &call_args[i];
+                                let variable_content = VariableContent {
+                                    expr: arg_expr,
+                                    value: arg_value,
+                                };
+
+                                // TODO: there's got to be a simpler way to do this
+                                if !function_environment.contains_key(arg_name.as_str()) {
+                                    function_environment.insert(arg_name.clone(), variable_content);
+                                } else {
+                                    *function_environment.get_mut(arg_name.as_str()).unwrap() =
+                                        variable_content;
+                                }
+                            }
+                            eval(body, &mut function_environment)
+                        }
+                    }
+                    _ => Err(make_eval_error(
+                        expr,
+                        format!("Expected {} to be a function", function_definition.value).as_str(),
+                    )),
+                }
+            } else {
+                Err(make_eval_error(
+                    expr,
+                    format!("Undefined function {}", name).as_str(),
+                ))
+            }
+        }
         Expr::Unit => Ok(Value::Unit),
     }
 }
@@ -218,6 +291,21 @@ mod test {
                 &mut Environment::new()
             ),
             Ok(Value::String(String::from("hello, world")))
+        );
+    }
+
+    #[test]
+    fn string_len() {
+        assert_eq!(
+            eval(
+                &Expr::MethodCall {
+                    name: Identifier::from("len"),
+                    target: Box::new(Expr::String(String::from("hello"))),
+                    args: Vec::new()
+                },
+                &mut Environment::new()
+            ),
+            Ok(Value::Number(5f64))
         );
     }
 }
