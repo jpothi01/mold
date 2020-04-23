@@ -1,8 +1,8 @@
-use crate::parse::ast::AssignmentLHS;
-use crate::parse::ast::Expr;
-use crate::parse::ast::Identifier;
-use crate::parse::ast::Op;
-use crate::parse::ast::Statement;
+use super::parse::ast::AssignmentLHS;
+use super::parse::ast::Expr;
+use super::parse::ast::Identifier;
+use super::parse::ast::Op;
+use super::parse::ast::Statement;
 use std::collections::HashMap;
 use std::fmt;
 use std::ops;
@@ -207,7 +207,10 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
             if environment.contains_key(name.as_str()) {
                 let function_definition = &environment[name.as_str()];
                 if !function_definition.value.is_method() {
-                    return Err(make_eval_error(expr, format!("Expected {} to be a method", name).as_str()));
+                    return Err(make_eval_error(
+                        expr,
+                        format!("Expected {} to be a method", name).as_str(),
+                    ));
                 }
 
                 match function_definition.value.clone() {
@@ -226,19 +229,26 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
                         } else {
                             let mut function_environment = environment.clone();
                             let num_args = def_args.len();
-                            for i in 0..num_args {
+
+                            let variable_content = VariableContent {
+                                expr: &**target,
+                                value: target_value,
+                            };
+
+                            // TODO: there's got to be a simpler way to do this
+                            if !function_environment.contains_key("self") {
+                                function_environment.insert(String::from("self"), variable_content);
+                            } else {
+                                *function_environment.get_mut("self").unwrap() = variable_content;
+                            }
+
+                            for i in 1..num_args {
                                 let arg_name = def_args[i].clone();
 
-                                let (arg_expr, arg_value) = if i == 0 {
-                                    (&**target, target_value)
-                                } else {
-                                    let arg_expr = &call_args[i-1];
-                                    (arg_expr, eval(arg_expr, environment)?)
-                                }
-                                let arg_expr = &call_args[i];
+                                let arg_expr = &call_args[i - 1];
                                 let variable_content = VariableContent {
                                     expr: arg_expr,
-                                    value: arg_value,
+                                    value: eval(arg_expr, environment)?,
                                 };
 
                                 // TODO: there's got to be a simpler way to do this

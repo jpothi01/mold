@@ -1,6 +1,6 @@
-use mold::eval;
-use mold::eval::Environment;
-use mold::parse;
+use mold::core::eval;
+use mold::core::eval::Environment;
+use mold::core::parse;
 use std::env;
 use std::fmt;
 use std::fs;

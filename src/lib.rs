@@ -1,2 +1,2 @@
-pub mod eval;
-pub mod parse;
+pub mod core;
+pub mod stdlib;

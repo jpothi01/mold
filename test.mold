@@ -2,6 +2,12 @@ fn f(a, b) {
     a + b
 }
 
+impl String {
+    rust fn iter(self) {
+        return mold::Value::Iterator{};
+    }
+}
+
 fn iter(s: mold::Value) -> mold::Value {
     // Need to create an iterator object that points to the string.
     // For a naive implementation, it could copy the string.
