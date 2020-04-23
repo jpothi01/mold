@@ -1,7 +1,28 @@
-fn get_the_number(a, b) {
-    a + (b + 2)
+fn f(a, b) {
+    a + b
 }
 
-x = 1
-y = 2
-8
+fn iter(s: mold::Value) -> mold::Value {
+    // Need to create an iterator object that points to the string.
+    // For a naive implementation, it could copy the string.
+    // The next() method advances an internal pointer.
+    // This can either wrap a rust object, or be implemented in mold
+    // If implemented in mold, we need the ability to index into a string object
+    // to return a character at a specific index.
+    // If it's wrapped in rust, we need a new Value alternative that specifically holds a string iterator.
+    // 
+}
+
+// "Method"/Impl support
+it = s.iter()
+
+// While loop
+// None value
+result = it.next()
+s = ""
+while result != None {
+    s = s + result
+    result = it.next()
+}
+
+f("hello, ", "world"+"test")

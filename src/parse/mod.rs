@@ -305,6 +305,20 @@ fn parse_string_literal(parser_state: &mut ParserState) -> ParseResult {
     }
 }
 
+fn parse_method_call(parser_state: &mut ParserState, target: Expr) -> ParseResult {
+    assert!(parser_state.next_character() == Some('.'));
+    parser_state.consume_character();
+    parser_state.consume_until_nonwhitespace();
+    let method_name = parse_identifier(parser_state)?;
+    parser_state.consume_until_nonwhitespace();
+    let function_call_args = parse_function_call_args(parser_state)?;
+    return Ok(Expr::MethodCall {
+        name: method_name,
+        target: Box::new(target),
+        args: function_call_args,
+    });
+}
+
 fn parse_primary(parser_state: &mut ParserState) -> ParseResult {
     // Base case: We parse the rhs of a binary or unary operation
     // Recursive case: We need to parse the rhs of a binary operation
@@ -329,15 +343,16 @@ fn parse_primary(parser_state: &mut ParserState) -> ParseResult {
         let identifier = parse_identifier(parser_state)?;
         parser_state.consume_until_nonwhitespace();
         let maybe_next_character = parser_state.next_character();
-        if maybe_next_character != Some('(') {
-            return Ok(Expr::Ident(identifier));
+        match maybe_next_character {
+            Some('(') => {
+                let function_call_args = parse_function_call_args(parser_state)?;
+                return Ok(Expr::FunctionCall {
+                    name: identifier,
+                    args: function_call_args,
+                });
+            }
+            _ => return Ok(Expr::Ident(identifier)),
         }
-
-        let function_call_args = parse_function_call_args(parser_state)?;
-        return Ok(Expr::FunctionCall {
-            name: identifier,
-            args: function_call_args,
-        });
     }
 
     return parse_number(parser_state);
@@ -411,6 +426,8 @@ fn parse_expr(parser_state: &mut ParserState) -> ParseResult {
                     "Left-hand side of assignment must be a variable name",
                 )),
             }
+        } else if next_character == '.' {
+            parse_method_call(parser_state, primary)
         } else {
             Err(make_parse_error(
                 parser_state,
@@ -644,5 +661,17 @@ mod tests {
                 Box::new(Expr::Unit)
             ))
         );
+    }
+
+    #[test]
+    fn parse_method_call() {
+        assert_eq!(
+            parse("\"hello\".iter()"),
+            Ok(Expr::MethodCall {
+                name: Identifier::from("iter"),
+                target: Box::new(Expr::String(String::from("hello"))),
+                args: Vec::new()
+            })
+        )
     }
 }

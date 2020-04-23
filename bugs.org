@@ -1,3 +1,6 @@
 * Strings
 ** TODO string literals are copied upon assignment
 ** TODO support escape sequences
+
+* Runtime
+** TODO evaluation errors should not panic, they should return EvalError...maybe?

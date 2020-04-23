@@ -190,6 +190,7 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
                 ))
             }
         }
+        Expr::MethodCall { name, target, args } => panic!("MethoCall not yet supported"),
         Expr::Unit => Ok(Value::Unit),
     }
 }

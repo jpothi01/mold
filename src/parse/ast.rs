@@ -63,6 +63,11 @@ pub enum Expr {
         name: Identifier,
         args: Vec<Expr>,
     },
+    MethodCall {
+        name: Identifier,
+        target: Box<Expr>,
+        args: Vec<Expr>,
+    },
     Unit,
 }
 
@@ -100,6 +105,14 @@ impl fmt::Debug for Expr {
             }
             Expr::FunctionCall { name, args } => {
                 write!(f, "(call {:?}", name)?;
+                for arg in args {
+                    write!(f, " {:?}", arg)?;
+                }
+                write!(f, ")")
+            }
+            Expr::MethodCall { name, target, args } => {
+                write!(f, "(methodcall {:?}", name)?;
+                write!(f, " {:?}", target)?;
                 for arg in args {
                     write!(f, " {:?}", arg)?;
                 }
