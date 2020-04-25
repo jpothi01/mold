@@ -79,7 +79,8 @@ impl<'a> ParserState<'a> {
 
 // Does this character always terminate an expression?
 fn is_expression_terminator(c: char) -> bool {
-    c == ')' || c == '}' || c == ','
+    // Putting '}' here might cause trouble when I add structs
+    c == ')' || c == '}' || c == ',' || c == '{'
 }
 
 fn starts_with_keyword(s: &str, keyword: &str) -> bool {
@@ -89,6 +90,8 @@ fn starts_with_keyword(s: &str, keyword: &str) -> bool {
 mod keywords {
     pub const FUNCTION: &'static str = "fn";
     pub const IMPL: &'static str = "impl";
+    pub const IF: &'static str = "if";
+    pub const ELSE: &'static str = "else";
 }
 
 impl fmt::Display for ParseError {
@@ -357,6 +360,11 @@ fn parse_primary(parser_state: &mut ParserState) -> ParseResult {
     debug_println!("parse_primary: {:?}", parser_state);
 
     parser_state.consume_until_nonwhitespace();
+
+    if starts_with_keyword(parser_state.remaining_input, keywords::IF) {
+        return parse_if_else(parser_state);
+    }
+
     let maybe_next_character = parser_state.next_character();
     if maybe_next_character.is_none() {
         return Ok(Expr::Unit);
@@ -432,6 +440,7 @@ fn parse_function_definition(
 }
 
 fn parse_function_definition_expr(parser_state: &mut ParserState) -> ParseResult {
+    debug_println!("parser_function_definition_expr: {:?}", parser_state);
     let function_definition = parse_function_definition(parser_state)?;
     let rest = parse_expr(parser_state)?;
     Ok(Expr::Statement(
@@ -441,6 +450,7 @@ fn parse_function_definition_expr(parser_state: &mut ParserState) -> ParseResult
 }
 
 fn parse_impl(parser_state: &mut ParserState) -> ParseResult {
+    debug_println!("parse_impl: {:?}", parser_state);
     debug_assert!(starts_with_keyword(
         parser_state.remaining_input,
         keywords::IMPL
@@ -469,6 +479,45 @@ fn parse_impl(parser_state: &mut ParserState) -> ParseResult {
         },
         Box::new(rest),
     ))
+}
+
+fn parse_if_else(parser_state: &mut ParserState) -> ParseResult {
+    debug_println!("parse_if_else: {:?}", parser_state);
+    debug_assert!(starts_with_keyword(
+        parser_state.remaining_input,
+        keywords::IF
+    ));
+    parser_state.consume_n_characters(keywords::IF.len());
+
+    parser_state.consume_until_nonwhitespace();
+    let condition = parse_expr(parser_state)?;
+    parser_state.consume_until_nonwhitespace();
+    parser_state.expect_character_and_consume('{')?;
+    let if_branch = parse_expr(parser_state)?;
+    parser_state.consume_until_nonwhitespace();
+    parser_state.expect_character_and_consume('}')?;
+    parser_state.consume_until_nonwhitespace();
+
+    if !starts_with_keyword(parser_state.remaining_input, keywords::ELSE) {
+        return Err(make_parse_error(
+            parser_state,
+            format!("Expected keyword '{}'", keywords::ELSE).as_str(),
+        ));
+    }
+
+    parser_state.consume_n_characters(keywords::ELSE.len());
+    parser_state.consume_until_nonwhitespace();
+    parser_state.expect_character_and_consume('{')?;
+    let else_branch = parse_expr(parser_state)?;
+    parser_state.consume_until_nonwhitespace();
+    parser_state.expect_character_and_consume('}')?;
+    parser_state.consume_until_nonwhitespace();
+
+    Ok(Expr::IfElse {
+        condition: Box::new(condition),
+        if_branch: Box::new(if_branch),
+        else_branch: Box::new(else_branch),
+    })
 }
 
 fn parse_expr(parser_state: &mut ParserState) -> ParseResult {
@@ -510,7 +559,11 @@ fn parse_expr(parser_state: &mut ParserState) -> ParseResult {
         } else {
             Err(make_parse_error(
                 parser_state,
-                "Expected a binary operator, '=', or end of expression",
+                format!(
+                    "Expected a binary operator, '=', or end of expression, but found {}",
+                    next_character
+                )
+                .as_str(),
             ))
         }
     } else {
@@ -811,5 +864,17 @@ mod tests {
             "#
             )
         );
+    }
+
+    #[test]
+    fn parse_if_else() {
+        assert_eq!(
+            parse("if x { 1 } else { 2 }"),
+            Ok(Expr::IfElse {
+                condition: Box::new(Expr::Ident(Identifier::from("x"))),
+                if_branch: Box::new(Expr::Number(1f64)),
+                else_branch: Box::new(Expr::Number(2f64)),
+            })
+        )
     }
 }

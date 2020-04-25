@@ -172,6 +172,7 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
                 Ok(lhs_value + rhs_value)
             }
         },
+        Expr::Unit => Ok(Value::Unit(types::Unit {})),
         Expr::Number(number) => Ok(Value::Number(types::Number { value: *number })),
         Expr::String(s) => Ok(Value::String(types::String {
             contents: s.clone(),
@@ -411,7 +412,11 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
                 ))
             }
         }
-        Expr::Unit => Ok(Value::Unit(types::Unit {})),
+        Expr::IfElse {
+            condition,
+            if_branch,
+            else_branch,
+        } => panic!(),
     }
 }
 

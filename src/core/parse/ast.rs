@@ -69,6 +69,7 @@ pub enum Expr {
         rhs: Box<Expr>,
         lhs: Box<Expr>,
     },
+    Unit,
     Number(f64),
     String(String),
     Ident(Identifier),
@@ -82,7 +83,11 @@ pub enum Expr {
         target: Box<Expr>,
         args: Vec<Expr>,
     },
-    Unit,
+    IfElse {
+        condition: Box<Expr>,
+        if_branch: Box<Expr>,
+        else_branch: Box<Expr>,
+    },
 }
 
 #[derive(PartialEq, Clone)]
@@ -102,6 +107,7 @@ impl fmt::Debug for Expr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Expr::BinOp { op, lhs, rhs } => write!(f, "({:?} {:?} {:?})", op, lhs, rhs),
+            Expr::Unit => write!(f, "()"),
             Expr::Number(n) => write!(f, "({:?})", n),
             Expr::String(s) => write!(f, "({:?}", s),
             Expr::Ident(i) => write!(f, "(id {:?})", i),
@@ -139,7 +145,15 @@ impl fmt::Debug for Expr {
                 }
                 write!(f, ")")
             }
-            Expr::Unit => write!(f, "()"),
+            Expr::IfElse {
+                condition,
+                if_branch,
+                else_branch,
+            } => write!(
+                f,
+                "(ifelse {:?} {:?} {:?}",
+                condition, if_branch, else_branch
+            ),
         }
     }
 }
