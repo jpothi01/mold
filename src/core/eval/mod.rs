@@ -21,6 +21,18 @@ pub enum Value<'a> {
     Unit(types::Unit),
 }
 
+impl<'a> Type for Value<'a> {
+    fn type_id(&self) -> TypeID {
+        match self {
+            Value::Number(n) => n.type_id(),
+            Value::Function(f) => f.type_id(),
+            Value::String(s) => s.type_id(),
+            Value::Bool(b) => b.type_id(),
+            Value::Unit(u) => u.type_id(),
+        }
+    }
+}
+
 impl<'a> Value<'a> {
     fn type_id(&self) -> TypeID {
         match self {
@@ -85,16 +97,16 @@ impl<'a> Environment<'a> {
             types: Types::new(),
         };
 
-        // Hack to insert the string type in by default
-        environment.types.insert(
-            types::String {
-                contents: String::from("fake"),
-            }
-            .type_id(),
-            TypeContent {
-                methods: Methods::new(),
-            },
-        );
+        // Hack to insert built-in types at startup
+        let builtin_type_ids = ["String", "Number", "Function", "Bool"];
+        for id in builtin_type_ids.iter() {
+            environment.types.insert(
+                String::from(*id),
+                TypeContent {
+                    methods: Methods::new(),
+                },
+            );
+        }
 
         environment
     }
