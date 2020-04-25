@@ -1,7 +1,7 @@
-impl String {
-    fn f(self) {
-        self
+impl Number {
+    fn increment(self) {
+        self + 1
     }
 }
 
-"hello".f()
+(2).increment()

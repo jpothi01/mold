@@ -33,15 +33,6 @@ impl<'a> Type for Value<'a> {
     }
 }
 
-impl<'a> Value<'a> {
-    fn type_id(&self) -> TypeID {
-        match self {
-            Value::String(s) => s.type_id(),
-            _ => TypeID::from("Value"),
-        }
-    }
-}
-
 impl<'a> fmt::Display for Value<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -331,86 +322,85 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
             let call_args = args;
 
             // This code is quite messy, please clean it up.
-            if environment.types.contains_key(target_type.as_str()) {
-                if !environment.types[target_type.as_str()]
-                    .methods
-                    .contains_key(name.as_str())
-                {
-                    return Err(make_eval_error(
-                        expr,
-                        format!("Undefined method '{}' for type '{}'", name, target_type).as_str(),
-                    ));
-                }
-                let function_definition =
-                    environment.types[target_type.as_str()].methods[name.as_str()].clone();
-                if !function_definition.is_method() {
-                    return Err(make_eval_error(
-                        expr,
-                        format!("Expected {} to be a method", name).as_str(),
-                    ));
-                }
-
-                let def_args = function_definition.args.clone();
-                if call_args.len() + 1 != def_args.len() {
-                    Err(make_eval_error(
-                        expr,
-                        format!(
-                            "Expected {} arguments, got {}",
-                            def_args.len(),
-                            call_args.len()
-                        )
-                        .as_str(),
-                    ))
-                } else {
-                    let mut function_environment = environment.clone();
-                    let num_args = def_args.len();
-
-                    let variable_content = VariableContent {
-                        expr: &**target,
-                        value: target_value,
-                    };
-
-                    // TODO: there's got to be a simpler way to do this
-                    if !function_environment.variables.contains_key("self") {
-                        function_environment
-                            .variables
-                            .insert(String::from("self"), variable_content);
-                    } else {
-                        *function_environment.variables.get_mut("self").unwrap() = variable_content;
-                    }
-
-                    for i in 1..num_args {
-                        let arg_name = def_args[i].clone();
-
-                        let arg_expr = &call_args[i - 1];
-                        let variable_content = VariableContent {
-                            expr: arg_expr,
-                            value: eval(arg_expr, environment)?,
-                        };
-
-                        // TODO: there's got to be a simpler way to do this
-                        if !function_environment
-                            .variables
-                            .contains_key(arg_name.as_str())
-                        {
-                            function_environment
-                                .variables
-                                .insert(arg_name.clone(), variable_content);
-                        } else {
-                            *function_environment
-                                .variables
-                                .get_mut(arg_name.as_str())
-                                .unwrap() = variable_content;
-                        }
-                    }
-                    eval(function_definition.body, &mut function_environment)
-                }
-            } else {
-                Err(make_eval_error(
+            if !environment.types.contains_key(target_type.as_str()) {
+                return Err(make_eval_error(
                     expr,
-                    format!("Undefined function {}", name).as_str(),
-                ))
+                    format!("Undefined type {}", target_type).as_str(),
+                ));
             }
+
+            if !environment.types[target_type.as_str()]
+                .methods
+                .contains_key(name.as_str())
+            {
+                return Err(make_eval_error(
+                    expr,
+                    format!("Undefined method '{}' for type '{}'", name, target_type).as_str(),
+                ));
+            }
+            let function_definition =
+                environment.types[target_type.as_str()].methods[name.as_str()].clone();
+            if !function_definition.is_method() {
+                return Err(make_eval_error(
+                    expr,
+                    format!("Expected {} to be a method", name).as_str(),
+                ));
+            }
+
+            let def_args = function_definition.args.clone();
+            if call_args.len() + 1 != def_args.len() {
+                return Err(make_eval_error(
+                    expr,
+                    format!(
+                        "Expected {} arguments, got {}",
+                        def_args.len(),
+                        call_args.len()
+                    )
+                    .as_str(),
+                ));
+            }
+            let mut function_environment = environment.clone();
+            let num_args = def_args.len();
+
+            let variable_content = VariableContent {
+                expr: &**target,
+                value: target_value,
+            };
+
+            // TODO: there's got to be a simpler way to do this
+            if !function_environment.variables.contains_key("self") {
+                function_environment
+                    .variables
+                    .insert(String::from("self"), variable_content);
+            } else {
+                *function_environment.variables.get_mut("self").unwrap() = variable_content;
+            }
+
+            for i in 1..num_args {
+                let arg_name = def_args[i].clone();
+
+                let arg_expr = &call_args[i - 1];
+                let variable_content = VariableContent {
+                    expr: arg_expr,
+                    value: eval(arg_expr, environment)?,
+                };
+
+                // TODO: there's got to be a simpler way to do this
+                if !function_environment
+                    .variables
+                    .contains_key(arg_name.as_str())
+                {
+                    function_environment
+                        .variables
+                        .insert(arg_name.clone(), variable_content);
+                } else {
+                    *function_environment
+                        .variables
+                        .get_mut(arg_name.as_str())
+                        .unwrap() = variable_content;
+                }
+            }
+            eval(function_definition.body, &mut function_environment)
         }
         Expr::IfElse {
             condition,
