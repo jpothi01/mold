@@ -458,7 +458,7 @@ fn parse_impl(parser_state: &mut ParserState) -> ParseResult {
 
     Ok(Expr::Statement(
         Statement::Impl {
-            t: type_identifier,
+            tid: type_identifier,
             methods: methods,
         },
         Box::new(rest),
@@ -764,7 +764,7 @@ mod tests {
             ),
             Ok(Expr::Statement(
                 Statement::Impl {
-                    t: Type::from("String"),
+                    tid: TypeID::from("String"),
                     methods: vec!(
                         FunctionDefinition {
                             name: Identifier::from("len"),

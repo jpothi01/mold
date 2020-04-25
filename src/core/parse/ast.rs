@@ -34,7 +34,7 @@ impl fmt::Debug for Op {
 }
 
 pub type Identifier = String;
-pub type Type = String;
+pub type TypeID = String;
 
 #[derive(PartialEq)]
 pub struct FunctionDefinition {
@@ -57,7 +57,7 @@ pub enum Statement {
     },
     FunctionDefinition(FunctionDefinition),
     Impl {
-        t: Type,
+        tid: TypeID,
         methods: Vec<FunctionDefinition>,
     },
 }
@@ -113,8 +113,8 @@ impl fmt::Debug for Expr {
                     Statement::FunctionDefinition(function_definition) => {
                         write!(f, "{:?}", function_definition)
                     }
-                    Statement::Impl { t, methods } => {
-                        write!(f, "(impl {:?}", t)?;
+                    Statement::Impl { tid, methods } => {
+                        write!(f, "(impl {:?}", tid)?;
                         for method in methods {
                             write!(f, " {:?}", method)?;
                         }

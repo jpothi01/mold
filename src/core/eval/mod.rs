@@ -1,3 +1,5 @@
+pub mod types;
+
 use super::parse::ast::AssignmentLHS;
 use super::parse::ast::Expr;
 use super::parse::ast::Identifier;
@@ -14,7 +16,7 @@ pub enum Value<'a> {
         args: Vec<Identifier>,
         body: &'a Expr,
     },
-    String(String),
+    String(types::String),
     Unit,
 }
 
@@ -30,7 +32,7 @@ impl<'a> fmt::Display for Value<'a> {
 
                 write!(f, " {:?})", body)
             }
-            Value::String(s) => write!(f, "{}", s),
+            Value::String(s) => write!(f, "{}", s.contents),
             Value::Unit => write!(f, "()"),
         }
     }
@@ -67,7 +69,9 @@ impl<'a> ops::Add<Value<'a>> for Value<'a> {
                 _ => panic!("Mismatched types for '+'"),
             },
             Value::String(s1) => match rhs {
-                Value::String(s2) => Value::String(s1 + s2.as_str()),
+                Value::String(s2) => Value::String(types::String {
+                    contents: s1.contents + s2.contents.as_str(),
+                }),
                 _ => panic!("Mismatched types for '+'"),
             },
             _ => panic!("Cannot use '+' operator for Unit"),
@@ -102,7 +106,9 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
             }
         },
         Expr::Number(number) => Ok(Value::Number(*number)),
-        Expr::String(s) => Ok(Value::String(s.clone())),
+        Expr::String(s) => Ok(Value::String(types::String {
+            contents: s.clone(),
+        })),
         Expr::Ident(id) => {
             if environment.contains_key(id.as_str()) {
                 eval(environment[id].expr, environment)
@@ -149,7 +155,7 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
 
                 eval(rest, environment)
             }
-            Statement::Impl { t, methods } => panic!(),
+            Statement::Impl { tid, methods } => panic!(),
         },
         Expr::FunctionCall { name, args } => {
             if environment.contains_key(name.as_str()) {
@@ -303,7 +309,9 @@ mod test {
                 },
                 &mut Environment::new()
             ),
-            Ok(Value::String(String::from("hello, world")))
+            Ok(Value::String(types::String {
+                contents: String::from("hello, world")
+            }))
         );
     }
 
