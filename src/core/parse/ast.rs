@@ -1,6 +1,6 @@
 use std::fmt;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub enum Op {
     Plus,
 }
@@ -36,7 +36,7 @@ impl fmt::Debug for Op {
 pub type Identifier = String;
 pub type TypeID = String;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub struct FunctionDefinition {
     pub name: Identifier,
     pub args: Vec<Identifier>,
@@ -49,7 +49,7 @@ impl fmt::Debug for FunctionDefinition {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub enum Statement {
     Assignment {
         lhs: AssignmentLHS,
@@ -62,7 +62,7 @@ pub enum Statement {
     },
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub enum Expr {
     BinOp {
         op: Op,
@@ -85,7 +85,7 @@ pub enum Expr {
     Unit,
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub enum AssignmentLHS {
     Single(Identifier),
 }

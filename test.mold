@@ -1,7 +1,7 @@
-fn f(x) {
-    // Do the thing
-    x + 1
+impl String {
+    fn f(self) {
+        self
+    }
 }
 
-// Now call the thing
-f(1)
+"hello".f()
