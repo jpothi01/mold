@@ -2,6 +2,7 @@ pub mod ast;
 
 use ast::AssignmentLHS;
 use ast::Expr;
+use ast::FunctionDefinition;
 use ast::Identifier;
 use ast::Op;
 use ast::Statement;
@@ -57,6 +58,15 @@ impl<'a> ParserState<'a> {
 // Does this character always terminate an expression?
 fn is_expression_terminator(c: char) -> bool {
     c == ')' || c == '}' || c == ','
+}
+
+fn starts_with_keyword(s: &str, keyword: &str) -> bool {
+    s.starts_with(keyword) && s.chars().nth(keyword.len()) == Some(' ')
+}
+
+mod keywords {
+    pub const FUNCTION: &'static str = "fn";
+    pub const IMPL: &'static str = "impl";
 }
 
 impl fmt::Display for ParseError {
@@ -358,11 +368,17 @@ fn parse_primary(parser_state: &mut ParserState) -> ParseResult {
     return parse_number(parser_state);
 }
 
-fn parser_function_definition(parser_state: &mut ParserState) -> ParseResult {
+fn parse_function_definition(
+    parser_state: &mut ParserState,
+) -> Result<FunctionDefinition, ParseError> {
     println!("parser_function_definition: {:?}", parser_state);
 
-    assert!(parser_state.remaining_input.starts_with("fn "));
-    parser_state.consume_n_characters(3);
+    assert!(starts_with_keyword(
+        parser_state.remaining_input,
+        keywords::FUNCTION
+    ));
+    parser_state.consume_n_characters(keywords::FUNCTION.len());
+    parser_state.consume_until_nonwhitespace();
     let name = parse_identifier(parser_state)?;
 
     parser_state.expect_character_and_consume('(')?;
@@ -386,13 +402,50 @@ fn parser_function_definition(parser_state: &mut ParserState) -> ParseResult {
     parser_state.expect_character_and_consume('}')?;
     parser_state.consume_until_nonwhitespace();
 
+    Ok(FunctionDefinition {
+        name: name,
+        args: args,
+        body: Box::new(body),
+    })
+}
+
+fn parse_function_definition_expr(parser_state: &mut ParserState) -> ParseResult {
+    let function_definition = parse_function_definition(parser_state)?;
+    let rest = parse_expr(parser_state)?;
     Ok(Expr::Statement(
-        Statement::FunctionDefinition {
-            name: name,
-            args: args,
-            body: Box::new(body),
+        Statement::FunctionDefinition(function_definition),
+        Box::new(rest),
+    ))
+}
+
+fn parse_impl(parser_state: &mut ParserState) -> ParseResult {
+    assert!(starts_with_keyword(
+        parser_state.remaining_input,
+        keywords::IMPL
+    ));
+    parser_state.consume_n_characters(keywords::IMPL.len());
+    parser_state.consume_until_nonwhitespace();
+
+    let type_identifier = parse_identifier(parser_state)?;
+    parser_state.consume_until_nonwhitespace();
+    parser_state.expect_character_and_consume('{')?;
+
+    let mut methods: Vec<FunctionDefinition> = Vec::new();
+    while parser_state.next_character().is_some() && parser_state.next_character() != Some('}') {
+        parser_state.consume_until_nonwhitespace();
+        methods.push(parse_function_definition(parser_state)?);
+        parser_state.consume_until_nonwhitespace();
+    }
+
+    parser_state.expect_character_and_consume('}')?;
+    let rest = parse_expr(parser_state)?;
+
+    Ok(Expr::Statement(
+        Statement::Impl {
+            t: type_identifier,
+            methods: methods,
         },
-        Box::new(parse_expr(parser_state)?),
+        Box::new(rest),
     ))
 }
 
@@ -400,9 +453,13 @@ fn parse_expr(parser_state: &mut ParserState) -> ParseResult {
     println!("parse_expr: {:?}", parser_state);
 
     parser_state.consume_until_nonwhitespace();
-    // An expression either starts with a primary expression or is a function definition
-    if parser_state.remaining_input.starts_with("fn ") {
-        return parser_function_definition(parser_state);
+
+    if starts_with_keyword(parser_state.remaining_input, keywords::FUNCTION) {
+        return parse_function_definition_expr(parser_state);
+    }
+
+    if starts_with_keyword(parser_state.remaining_input, keywords::IMPL) {
+        return parse_impl(parser_state);
     }
 
     let primary = parse_primary(parser_state)?;
@@ -537,7 +594,7 @@ mod tests {
             "#
             ),
             Ok(Expr::Statement(
-                Statement::FunctionDefinition {
+                Statement::FunctionDefinition(FunctionDefinition {
                     name: Identifier::from("f"),
                     args: vec!(Identifier::from("a"), Identifier::from("b")),
                     body: Box::new(Expr::BinOp {
@@ -545,7 +602,7 @@ mod tests {
                         lhs: Box::new(Expr::Ident(Identifier::from("a"))),
                         rhs: Box::new(Expr::Ident(Identifier::from("b"))),
                     })
-                },
+                }),
                 Box::new(Expr::Unit)
             ))
         )
@@ -566,17 +623,17 @@ mod tests {
             "#
             ),
             Ok(Expr::Statement(
-                Statement::FunctionDefinition {
+                Statement::FunctionDefinition(FunctionDefinition {
                     name: Identifier::from("f"),
                     args: vec!(Identifier::from("a")),
                     body: Box::new(Expr::Ident(Identifier::from("a")))
-                },
+                }),
                 Box::new(Expr::Statement(
-                    Statement::FunctionDefinition {
+                    Statement::FunctionDefinition(FunctionDefinition {
                         name: Identifier::from("g"),
                         args: vec!(Identifier::from("b")),
                         body: Box::new(Expr::Ident(Identifier::from("b")))
-                    },
+                    }),
                     Box::new(Expr::Unit)
                 ))
             ))
@@ -632,7 +689,7 @@ mod tests {
             f(1)"#
             ),
             Ok(Expr::Statement(
-                Statement::FunctionDefinition {
+                Statement::FunctionDefinition(FunctionDefinition {
                     name: Identifier::from("f"),
                     args: vec!(Identifier::from("x")),
                     body: Box::new(Expr::BinOp {
@@ -640,7 +697,7 @@ mod tests {
                         lhs: Box::new(Expr::Ident(Identifier::from("x"))),
                         rhs: Box::new(Expr::Number(1f64))
                     })
-                },
+                }),
                 Box::new(Expr::FunctionCall {
                     name: Identifier::from("f"),
                     args: vec!(Expr::Number(1f64))
@@ -673,5 +730,40 @@ mod tests {
                 args: Vec::new()
             })
         )
+    }
+
+    #[test]
+    fn parse_impl() {
+        assert_eq!(
+            parse(
+                r#"impl String {
+               fn len(self) {
+                   2
+               }
+
+               fn g() {
+                   3
+               }
+            }"#
+            ),
+            Ok(Expr::Statement(
+                Statement::Impl {
+                    t: Type::from("String"),
+                    methods: vec!(
+                        FunctionDefinition {
+                            name: Identifier::from("len"),
+                            args: vec!(Identifier::from("self")),
+                            body: Box::new(Expr::Number(2f64))
+                        },
+                        FunctionDefinition {
+                            name: Identifier::from("g"),
+                            args: Vec::new(),
+                            body: Box::new(Expr::Number(3f64))
+                        }
+                    )
+                },
+                Box::new(Expr::Unit)
+            ),)
+        );
     }
 }

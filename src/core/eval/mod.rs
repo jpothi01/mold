@@ -131,22 +131,25 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
                     eval(rest, environment)
                 }
             },
-            Statement::FunctionDefinition { name, args, body } => {
+            Statement::FunctionDefinition(function_definition) => {
                 let variable_content = VariableContent {
-                    expr: &**body,
+                    expr: &*function_definition.body,
                     value: Value::Function {
-                        args: args.clone(),
-                        body: &**body,
+                        args: function_definition.args.clone(),
+                        body: &*function_definition.body,
                     },
                 };
-                if !environment.contains_key(name.as_str()) {
-                    environment.insert(name.clone(), variable_content);
+                if !environment.contains_key(function_definition.name.as_str()) {
+                    environment.insert(function_definition.name.clone(), variable_content);
                 } else {
-                    *environment.get_mut(name.as_str()).unwrap() = variable_content;
+                    *environment
+                        .get_mut(function_definition.name.as_str())
+                        .unwrap() = variable_content;
                 }
 
                 eval(rest, environment)
             }
+            Statement::Impl { t, methods } => panic!(),
         },
         Expr::FunctionCall { name, args } => {
             if environment.contains_key(name.as_str()) {
@@ -304,18 +307,18 @@ mod test {
         );
     }
 
-    #[test]
-    fn string_len() {
-        assert_eq!(
-            eval(
-                &Expr::MethodCall {
-                    name: Identifier::from("len"),
-                    target: Box::new(Expr::String(String::from("hello"))),
-                    args: Vec::new()
-                },
-                &mut Environment::new()
-            ),
-            Ok(Value::Number(5f64))
-        );
-    }
+    // #[test]
+    // fn string_len() {
+    //     assert_eq!(
+    //         eval(
+    //             &Expr::MethodCall {
+    //                 name: Identifier::from("len"),
+    //                 target: Box::new(Expr::String(String::from("hello"))),
+    //                 args: Vec::new()
+    //             },
+    //             &mut Environment::new()
+    //         ),
+    //         Ok(Value::Number(5f64))
+    //     );
+    // }
 }

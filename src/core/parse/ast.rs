@@ -34,6 +34,20 @@ impl fmt::Debug for Op {
 }
 
 pub type Identifier = String;
+pub type Type = String;
+
+#[derive(PartialEq)]
+pub struct FunctionDefinition {
+    pub name: Identifier,
+    pub args: Vec<Identifier>,
+    pub body: Box<Expr>,
+}
+
+impl fmt::Debug for FunctionDefinition {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "(fn {:?} ({:?}) {:?})", self.name, self.args, self.body)
+    }
+}
 
 #[derive(PartialEq)]
 pub enum Statement {
@@ -41,10 +55,10 @@ pub enum Statement {
         lhs: AssignmentLHS,
         rhs: Box<Expr>,
     },
-    FunctionDefinition {
-        name: Identifier,
-        args: Vec<Identifier>,
-        body: Box<Expr>,
+    FunctionDefinition(FunctionDefinition),
+    Impl {
+        t: Type,
+        methods: Vec<FunctionDefinition>,
     },
 }
 
@@ -96,8 +110,15 @@ impl fmt::Debug for Expr {
                     Statement::Assignment { lhs, rhs } => {
                         write!(f, "(assign {:?} {:?} {:?})", lhs, rhs, rest)
                     }
-                    Statement::FunctionDefinition { name, args, body } => {
-                        write!(f, "(fn {:?} ({:?}) {:?}", name, args, body)
+                    Statement::FunctionDefinition(function_definition) => {
+                        write!(f, "{:?}", function_definition)
+                    }
+                    Statement::Impl { t, methods } => {
+                        write!(f, "(impl {:?}", t)?;
+                        for method in methods {
+                            write!(f, " {:?}", method)?;
+                        }
+                        write!(f, ")")
                     }
                 }?;
 
