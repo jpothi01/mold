@@ -1,7 +1,9 @@
-impl String {
-    fn f(self) {
-        self
-    }
+fn tell_me_the_answer(x) {
+    x + 42
 }
 
-"hello".f()
+fn get_me_the_x() {
+    1 + (2 + 3)
+}
+
+tell_me_the_answer(get_me_the_x())

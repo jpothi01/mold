@@ -21,6 +21,12 @@ struct ParserState<'a> {
     remaining_input: &'a str,
 }
 
+macro_rules! debug_println {
+    ($fmt:expr, $($arg:tt)*) => (if cfg ! ( debug_assertions ) {
+        print!(concat!($fmt, "\n"), $($arg)*)
+    });
+}
+
 impl<'a> ParserState<'a> {
     fn next_character(&self) -> Option<char> {
         self.remaining_input.chars().nth(0)
@@ -58,7 +64,7 @@ impl<'a> ParserState<'a> {
     }
     fn consume_line_comment(&mut self) {
         println!("consume_line_comment: {:?}", self);
-        assert!(self.remaining_input.starts_with("//"));
+        debug_assert!(self.remaining_input.starts_with("//"));
         let next_newline = self.remaining_input.find("\n");
         match next_newline {
             None => {
@@ -136,8 +142,8 @@ fn parse_binop_rhs(
     lhs: Expr,
     minimum_precedence: i32,
 ) -> ParseResult {
-    assert!(parser_state.remaining_input.len() > 0);
-    println!("parse_binop_rhs: {:?}", parser_state);
+    debug_assert!(parser_state.remaining_input.len() > 0);
+    debug_println!("parse_binop_rhs: {:?}", parser_state);
 
     let mut new_lhs = lhs;
     loop {
@@ -168,8 +174,8 @@ fn parse_binop_rhs(
         parser_state.consume_character();
 
         let next_primary_expr = parse_primary(parser_state)?;
-        println!("next_primary_expr: {:?}", next_primary_expr);
-        println!("{:?}", parser_state);
+        debug_println!("next_primary_expr: {:?}", next_primary_expr);
+        debug_println!("{:?}", parser_state);
 
         // Clean this up
         let rhs = if parser_state.remaining_input.len() > 0
@@ -191,12 +197,12 @@ fn parse_binop_rhs(
             lhs: Box::new(new_lhs),
             rhs: Box::new(rhs),
         };
-        println!("new_lhs: {:?}", new_lhs);
+        debug_println!("new_lhs: {:?}", new_lhs);
     }
 }
 
 fn parse_number(parser_state: &mut ParserState) -> ParseResult {
-    println!("parse_number: {:?}", parser_state);
+    debug_println!("parse_number: {:?}", parser_state);
 
     let is_part_of_number = |c: char| c.is_digit(10) || c == '.' || c == '-';
     let maybe_last_nonnumeric_index = parser_state
@@ -220,7 +226,7 @@ fn parse_number(parser_state: &mut ParserState) -> ParseResult {
 }
 
 fn parse_identifier(parser_state: &mut ParserState) -> Result<Identifier, ParseError> {
-    println!("parse_identifier: {:?}", parser_state);
+    debug_println!("parse_identifier: {:?}", parser_state);
 
     let is_part_of_identifier = |c: char| c.is_alphanumeric() || c == '_';
     let maybe_last_non_identifier_index = parser_state
@@ -248,9 +254,9 @@ fn parse_identifier(parser_state: &mut ParserState) -> Result<Identifier, ParseE
 }
 
 fn parse_assignment(parser_state: &mut ParserState, lhs: AssignmentLHS) -> ParseResult {
-    println!("parse_assignment: {:?}", parser_state);
+    debug_println!("parse_assignment: {:?}", parser_state);
 
-    assert!(parser_state.next_character() == Some('='));
+    debug_assert!(parser_state.next_character() == Some('='));
     parser_state.consume_character();
     parser_state.consume_until_nonwhitespace();
 
@@ -275,9 +281,9 @@ fn parse_assignment(parser_state: &mut ParserState, lhs: AssignmentLHS) -> Parse
 }
 
 fn parse_paren_expr(parser_state: &mut ParserState) -> ParseResult {
-    println!("parse_paren_expr: {:?}", parser_state);
+    debug_println!("parse_paren_expr: {:?}", parser_state);
 
-    assert!(parser_state.next_character() == Some('('));
+    debug_assert!(parser_state.next_character() == Some('('));
     parser_state.consume_character();
     let expr = parse_expr(parser_state)?;
     if parser_state.next_character() != Some(')') {
@@ -289,9 +295,9 @@ fn parse_paren_expr(parser_state: &mut ParserState) -> ParseResult {
 }
 
 fn parse_function_call_args(parser_state: &mut ParserState) -> Result<Vec<Expr>, ParseError> {
-    println!("parse_function_call_args: {:?}", parser_state);
+    debug_println!("parse_function_call_args: {:?}", parser_state);
 
-    assert!(parser_state.next_character() == Some('('));
+    debug_assert!(parser_state.next_character() == Some('('));
     parser_state.consume_character();
 
     let mut args: Vec<Expr> = Vec::new();
@@ -309,9 +315,9 @@ fn parse_function_call_args(parser_state: &mut ParserState) -> Result<Vec<Expr>,
 }
 
 fn parse_string_literal(parser_state: &mut ParserState) -> ParseResult {
-    println!("parse_string_literal: {:?}", parser_state);
+    debug_println!("parse_string_literal: {:?}", parser_state);
 
-    assert!(parser_state.next_character() == Some('"'));
+    debug_assert!(parser_state.next_character() == Some('"'));
     parser_state.consume_character();
 
     let maybe_string_end_index = parser_state.remaining_input.find('"');
@@ -332,7 +338,7 @@ fn parse_string_literal(parser_state: &mut ParserState) -> ParseResult {
 }
 
 fn parse_method_call(parser_state: &mut ParserState, target: Expr) -> ParseResult {
-    assert!(parser_state.next_character() == Some('.'));
+    debug_assert!(parser_state.next_character() == Some('.'));
     parser_state.consume_character();
     parser_state.consume_until_nonwhitespace();
     let method_name = parse_identifier(parser_state)?;
@@ -348,7 +354,7 @@ fn parse_method_call(parser_state: &mut ParserState, target: Expr) -> ParseResul
 fn parse_primary(parser_state: &mut ParserState) -> ParseResult {
     // Base case: We parse the rhs of a binary or unary operation
     // Recursive case: We need to parse the rhs of a binary operation
-    println!("parse_primary: {:?}", parser_state);
+    debug_println!("parse_primary: {:?}", parser_state);
 
     parser_state.consume_until_nonwhitespace();
     let maybe_next_character = parser_state.next_character();
@@ -387,9 +393,9 @@ fn parse_primary(parser_state: &mut ParserState) -> ParseResult {
 fn parse_function_definition(
     parser_state: &mut ParserState,
 ) -> Result<FunctionDefinition, ParseError> {
-    println!("parser_function_definition: {:?}", parser_state);
+    debug_println!("parser_function_definition: {:?}", parser_state);
 
-    assert!(starts_with_keyword(
+    debug_assert!(starts_with_keyword(
         parser_state.remaining_input,
         keywords::FUNCTION
     ));
@@ -435,7 +441,7 @@ fn parse_function_definition_expr(parser_state: &mut ParserState) -> ParseResult
 }
 
 fn parse_impl(parser_state: &mut ParserState) -> ParseResult {
-    assert!(starts_with_keyword(
+    debug_assert!(starts_with_keyword(
         parser_state.remaining_input,
         keywords::IMPL
     ));
@@ -466,7 +472,7 @@ fn parse_impl(parser_state: &mut ParserState) -> ParseResult {
 }
 
 fn parse_expr(parser_state: &mut ParserState) -> ParseResult {
-    println!("parse_expr: {:?}", parser_state);
+    debug_println!("parse_expr: {:?}", parser_state);
 
     parser_state.consume_until_nonwhitespace();
 
