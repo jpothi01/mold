@@ -14,10 +14,11 @@ use types::Type;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value<'a> {
-    Number(f64),
+    Number(types::Number),
     Function(types::Function<'a>),
     String(types::String),
-    Unit,
+    Bool(types::Bool),
+    Unit(types::Unit),
 }
 
 impl<'a> Value<'a> {
@@ -32,7 +33,8 @@ impl<'a> Value<'a> {
 impl<'a> fmt::Display for Value<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Value::Number(n) => write!(f, "{}", n),
+            Value::Number(n) => write!(f, "{}", n.value),
+            Value::Bool(b) => write!(f, "{}", b.value),
             Value::Function(function) => {
                 write!(f, "(fn ")?;
                 for arg in &function.args {
@@ -42,7 +44,7 @@ impl<'a> fmt::Display for Value<'a> {
                 write!(f, " {:?})", function.body)
             }
             Value::String(s) => write!(f, "{}", s.contents),
-            Value::Unit => write!(f, "()"),
+            Value::Unit(_) => write!(f, "()"),
         }
     }
 }
@@ -106,7 +108,9 @@ impl<'a> ops::Add<Value<'a>> for Value<'a> {
     fn add(self, rhs: Value) -> Value {
         match self {
             Value::Number(x) => match rhs {
-                Value::Number(y) => Value::Number(x + y),
+                Value::Number(y) => Value::Number(types::Number {
+                    value: x.value + y.value,
+                }),
                 _ => panic!("Mismatched types for '+'"),
             },
             Value::String(s1) => match rhs {
@@ -156,7 +160,7 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
                 Ok(lhs_value + rhs_value)
             }
         },
-        Expr::Number(number) => Ok(Value::Number(*number)),
+        Expr::Number(number) => Ok(Value::Number(types::Number { value: *number })),
         Expr::String(s) => Ok(Value::String(types::String {
             contents: s.clone(),
         })),
@@ -395,7 +399,7 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
                 ))
             }
         }
-        Expr::Unit => Ok(Value::Unit),
+        Expr::Unit => Ok(Value::Unit(types::Unit {})),
     }
 }
 
@@ -406,7 +410,7 @@ mod test {
     fn trivial_evaluation() {
         assert_eq!(
             eval(&Expr::Number(1f64), &mut Environment::new()),
-            Ok(Value::Number(1f64))
+            Ok(Value::Number(types::Number { value: 1f64 }))
         );
     }
 

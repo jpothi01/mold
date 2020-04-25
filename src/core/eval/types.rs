@@ -29,3 +29,34 @@ impl<'a> Type for Function<'a> {
         TypeID::from("Function")
     }
 }
+
+#[derive(PartialEq, Clone, Debug)]
+pub struct Bool {
+    pub value: bool,
+}
+
+impl Type for Bool {
+    fn type_id(&self) -> TypeID {
+        TypeID::from("Bool")
+    }
+}
+
+#[derive(PartialEq, Clone, Debug)]
+pub struct Number {
+    pub value: f64,
+}
+
+impl Type for Number {
+    fn type_id(&self) -> TypeID {
+        TypeID::from("Number")
+    }
+}
+
+#[derive(PartialEq, Clone, Debug)]
+pub struct Unit {}
+
+impl Type for Unit {
+    fn type_id(&self) -> TypeID {
+        TypeID::from("Unit")
+    }
+}
