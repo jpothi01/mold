@@ -33,6 +33,9 @@ impl<'a> ParserState<'a> {
     }
     fn consume_until_nonwhitespace(&mut self) {
         while let Some(c) = self.next_character() {
+            if self.remaining_input.starts_with("//") {
+                self.consume_line_comment();
+            }
             if c.is_whitespace() {
                 self.consume_character();
             } else {
@@ -52,6 +55,19 @@ impl<'a> ParserState<'a> {
             self,
             format!("Expected '{}'", character).as_str(),
         ))
+    }
+    fn consume_line_comment(&mut self) {
+        println!("consume_line_comment: {:?}", self);
+        assert!(self.remaining_input.starts_with("//"));
+        let next_newline = self.remaining_input.find("\n");
+        match next_newline {
+            None => {
+                self.remaining_input = "";
+            }
+            Some(index_of_newline) => {
+                self.remaining_input = &self.remaining_input[index_of_newline + 1..];
+            }
+        }
     }
 }
 
@@ -764,6 +780,30 @@ mod tests {
                 },
                 Box::new(Expr::Unit)
             ),)
+        );
+    }
+
+    #[test]
+    fn comments() {
+        assert_eq!(
+            parse(
+                r#"fn f(x) {
+                // Do the thing
+                    x + 1
+                }
+                
+                // Now call the thing
+                f(1)
+            "#
+            ),
+            parse(
+                r#"fn f(x) {
+                x + 1
+            }
+            
+            f(1)
+            "#
+            )
         );
     }
 }
