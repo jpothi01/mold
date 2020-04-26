@@ -14,7 +14,7 @@ pub struct String {
 }
 
 impl String {
-    fn new(s: std::string::String) -> Self {
+    pub fn from(s: std::string::String) -> Self {
         String { value: s }
     }
 }

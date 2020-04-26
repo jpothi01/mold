@@ -1,11 +1,15 @@
-rust fn len(s) {
+rust fn sqrt(s) {
+    // This is a rust function, compiled by rustc
     match s {
-        mold::Value::String(s) => {
-            let length = s.value.len();
-            mold::Value::Number(mold::Number::from(length as f64))
+        mold::Value::Number(n) => {
+            mold::Value::Number(mold::Number::from(n.value.sqrt()))
         }
-        _ => panic!()
+        _ => panic!("Expected a mold::Number")
     }
 }
 
-len("hello, world")
+a = 3
+b = 6
+
+// Call rust function with mold
+sqrt(a + b) // Prints "3"
