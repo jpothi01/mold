@@ -29,16 +29,20 @@ print(a.increment()) // Prints "Hello + 1"
 ## Seamless Rust interop
 
 ```
-rust fn wget(url) {
-    use reqwest;
-
-    match url {
-        mold::String(s) => reqwest::blocking::get(s.value.as_str())?.json::<HashMap<String, String>>().unwrap()
-        _ => panic!("Type error")
+rust fn sqrt(s) {
+    // This is a rust function, compiled by rustc
+    match s {
+        mold::Value::Number(n) => {
+            mold::Value::Number(mold::Number::from(n.value.sqrt()))
+        }
+        _ => panic!("Expected a mold::Number")
     }
 }
 
-json = wget("https://httpbin.org/ip")
-print(json)
+a = 3
+b = 6
+
+// Call rust function with mold
+print(a + b) // Prints "3"
 ```
 
