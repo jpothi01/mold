@@ -7,6 +7,7 @@ use super::parse::ast::Identifier;
 use super::parse::ast::Op;
 use super::parse::ast::Statement;
 use super::parse::ast::TypeID;
+use super::rust;
 use std::collections::HashMap;
 use std::fmt;
 use std::ops;
@@ -276,7 +277,15 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
 
                 eval(rest, environment)
             }
-            Statement::RustFunctionDefinition(function_definition) => panic!(),
+            Statement::RustFunctionDefinition(function_definition) => {
+                match rust::compile_function(function_definition) {
+                    Ok(extern_function) => {
+                        rust::external_eval(extern_function);
+                        eval(rest, environment)
+                    }
+                    Err(e) => Err(make_eval_error(expr, e.message.as_str())),
+                }
+            }
             Statement::Impl { tid, methods } => {
                 if !environment.types.contains_key(tid.as_str()) {
                     return Err(make_eval_error(

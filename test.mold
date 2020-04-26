@@ -1,5 +1,9 @@
 rust fn print() {
-    println!("Hello, world!")
+    for i in vec!(1, 2).iter() {
+        print!("{} ", i);
+    }
+
+    println!();
 }
 
 print()

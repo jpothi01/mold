@@ -29,24 +29,6 @@ fn print_error<T: fmt::Display>(error: T) {
     let _ = terminal.reset();
 }
 
-fn external_eval<'a>(function_name: &'a str, value: eval::Value<'a>) -> eval::Value<'a> {
-    use dylib::DynamicLibrary;
-
-    DynamicLibrary::prepend_search_path(path::Path::new("/Users/john/code/"));
-    match DynamicLibrary::open(Some(path::Path::new("libtest.dylib"))) {
-        Err(e) => panic!("Error opening dylib: {}", e),
-        Ok(lib) => {
-            let func: fn(&'a str, eval::Value<'a>) -> eval::Value<'a> = unsafe {
-                match lib.symbol::<u8>("__mold__dispatch") {
-                    Err(e) => panic!("Could not find symbol: {}", e),
-                    Ok(f) => std::mem::transmute(f),
-                }
-            };
-            func(function_name, value)
-        }
-    }
-}
-
 fn main() {
     let script = get_script();
     let expr_result = parse::parse(&script);
