@@ -34,10 +34,12 @@ pub struct ExternFunction {
     pub symbol_name: String,
 }
 
-pub fn external_eval_0<'a>(function: ExternFunction) -> eval::Value<'a> {
+pub fn external_eval_0<'a>(function: &ExternFunction) -> eval::Value<'a> {
     use dylib::DynamicLibrary;
 
-    // DynamicLibrary::prepend_search_path(std::path::Path::new("/Users/john/code/"));
+    DynamicLibrary::prepend_search_path(std::path::Path::new(
+        "/Users/john/code/mold/target/debug/deps",
+    ));
     match DynamicLibrary::open(Some(&function.dylib_path)) {
         Err(e) => panic!("Error opening dylib: {}", e),
         Ok(lib) => {
@@ -52,10 +54,12 @@ pub fn external_eval_0<'a>(function: ExternFunction) -> eval::Value<'a> {
     }
 }
 
-pub fn external_eval_1<'a>(function: ExternFunction, arg1: Value<'a>) -> Value<'a> {
+pub fn external_eval_1<'a>(function: &ExternFunction, arg1: Value<'a>) -> Value<'a> {
     use dylib::DynamicLibrary;
 
-    // DynamicLibrary::prepend_search_path(std::path::Path::new("/Users/john/code/"));
+    DynamicLibrary::prepend_search_path(std::path::Path::new(
+        "/Users/john/code/mold/target/debug/deps",
+    ));
     match DynamicLibrary::open(Some(&function.dylib_path)) {
         Err(e) => panic!("Error opening dylib: {}", e),
         Ok(lib) => {
@@ -88,7 +92,7 @@ pub fn compile_function(
 ) -> Result<ExternFunction, ExternCompileError> {
     let source = generate_rust_source(f);
 
-    println!("Compiling function: {}", source);
+    println!("Compiling function:\n {}", source);
 
     let dir = std::env::temp_dir();
     let file_path = dir.with_file_name("temp.rs");
@@ -102,6 +106,8 @@ pub fn compile_function(
             file_path.to_str().unwrap(),
             "--extern",
             "mold=target/debug/libmold.rlib",
+            "-L",
+            "target/debug/deps",
             "--crate-type",
             "dylib",
             "-o",
@@ -115,7 +121,9 @@ pub fn compile_function(
 
             if !output.status.success() {
                 eprintln!("{}", String::from_utf8(output.stderr).unwrap());
-                panic!();
+                return Err(ExternCompileError {
+                    message: String::from("Compilation of rust fn failed"),
+                });
             }
 
             Ok(ExternFunction {
@@ -125,7 +133,9 @@ pub fn compile_function(
         }
         Err(e) => {
             eprintln!("{}", e);
-            panic!();
+            Err(ExternCompileError {
+                message: String::from("Compilation of rust fn failed"),
+            })
         }
     }
 }

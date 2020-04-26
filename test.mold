@@ -8,4 +8,4 @@ rust fn len(s) {
     }
 }
 
-print()
+len("hello, world")

@@ -270,7 +270,42 @@ fn eval_rust_function_call<'a>(
     args: &'a Vec<Expr>,
     environment: &mut Environment<'a>,
 ) -> EvalResult<'a> {
-    panic!();
+    let function_definition = environment.rust_functions[name].clone();
+    let call_args = args;
+    let def_args = function_definition.args.clone();
+    if call_args.len() != def_args.len() {
+        return Err(make_eval_error(
+            expr,
+            format!(
+                "Expected {} arguments, got {}",
+                def_args.len(),
+                call_args.len()
+            )
+            .as_str(),
+        ));
+    }
+
+    let num_args = def_args.len();
+    let mut arg_values: Vec<Value<'a>> = Vec::new();
+    for i in 0..num_args {
+        let arg_name = def_args[i].clone();
+        let arg_expr = &call_args[i];
+        arg_values.push(eval(arg_expr, environment)?);
+    }
+
+    if arg_values.len() == 0 {
+        Ok(rust::external_eval_0(&function_definition.extern_function))
+    } else if arg_values.len() == 1 {
+        Ok(rust::external_eval_1(
+            &function_definition.extern_function,
+            arg_values[0].clone(),
+        ))
+    } else {
+        Err(make_eval_error(
+            expr,
+            format!("Unsupported number rust fn args: {}", arg_values.len()).as_str(),
+        ))
+    }
 }
 
 pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult<'a> {

@@ -66,7 +66,7 @@ pub struct Number {
 }
 
 impl Number {
-    fn from(n: f64) -> Self {
+    pub fn from(n: f64) -> Self {
         Number { value: n }
     }
 }
