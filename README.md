@@ -43,6 +43,6 @@ a = 3
 b = 6
 
 // Call rust function with mold
-c = sqrt(a + b)) // c is 3
+c = sqrt(a + b) // c is 3
 ```
 
