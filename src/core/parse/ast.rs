@@ -50,15 +50,24 @@ pub type Identifier = String;
 pub type TypeID = String;
 
 #[derive(PartialEq, Clone)]
-pub struct FunctionDefinition {
+pub struct FunctionSignature {
     pub name: Identifier,
     pub args: Vec<Identifier>,
+}
+
+#[derive(PartialEq, Clone)]
+pub struct FunctionDefinition {
+    pub signature: FunctionSignature,
     pub body: Box<Expr>,
 }
 
 impl fmt::Debug for FunctionDefinition {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "(fn {:?} ({:?}) {:?})", self.name, self.args, self.body)
+        write!(
+            f,
+            "(fn {:?} ({:?}) {:?})",
+            self.signature.name, self.signature.args, self.body
+        )
     }
 }
 

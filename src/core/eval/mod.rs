@@ -149,7 +149,7 @@ fn eval_function_definition<'a>(
     environment: &mut Environment<'a>,
 ) -> Result<types::Function<'a>, EvalError> {
     Ok(types::Function {
-        args: function_definition.args.clone(),
+        args: function_definition.signature.args.clone(),
         body: &*function_definition.body,
     })
 }
@@ -256,21 +256,21 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
                 let variable_content = VariableContent {
                     expr: &*function_definition.body,
                     value: Value::Function(types::Function {
-                        args: function_definition.args.clone(),
+                        args: function_definition.signature.args.clone(),
                         body: &*function_definition.body,
                     }),
                 };
                 if !environment
                     .variables
-                    .contains_key(function_definition.name.as_str())
+                    .contains_key(function_definition.signature.name.as_str())
                 {
                     environment
                         .variables
-                        .insert(function_definition.name.clone(), variable_content);
+                        .insert(function_definition.signature.name.clone(), variable_content);
                 } else {
                     *environment
                         .variables
-                        .get_mut(function_definition.name.as_str())
+                        .get_mut(function_definition.signature.name.as_str())
                         .unwrap() = variable_content;
                 }
 
@@ -287,13 +287,13 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
                 for method in methods {
                     if environment.types[tid.as_str()]
                         .methods
-                        .contains_key(method.name.as_str())
+                        .contains_key(method.signature.name.as_str())
                     {
                         return Err(make_eval_error(
                             expr,
                             format!(
                                 "Redefinition of method '{}' for type '{}'",
-                                method.name, tid
+                                method.signature.name, tid
                             )
                             .as_str(),
                         ));
@@ -305,7 +305,7 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
                         .get_mut(tid.as_str())
                         .unwrap()
                         .methods
-                        .insert(method.name.clone(), method_definition);
+                        .insert(method.signature.name.clone(), method_definition);
                 }
 
                 eval(rest, environment)
@@ -497,7 +497,7 @@ mod test {
                 &mut Environment::new()
             ),
             Ok(Value::String(types::String {
-                contents: String::from("hello, world")
+                value: String::from("hello, world")
             }))
         );
     }

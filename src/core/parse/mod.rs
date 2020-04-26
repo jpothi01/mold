@@ -3,6 +3,7 @@ pub mod ast;
 use ast::AssignmentLHS;
 use ast::Expr;
 use ast::FunctionDefinition;
+use ast::FunctionSignature;
 use ast::Identifier;
 use ast::IfElse;
 use ast::Op;
@@ -483,8 +484,10 @@ fn parse_function_definition(
     parser_state.consume_until_nonwhitespace();
 
     Ok(FunctionDefinition {
-        name: name,
-        args: args,
+        signature: FunctionSignature {
+            name: name,
+            args: args,
+        },
         body: Box::new(body),
     })
 }
