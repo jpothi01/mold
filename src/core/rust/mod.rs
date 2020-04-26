@@ -1,9 +1,12 @@
 use super::eval;
 use super::parse::ast;
+use super::Value;
 use std::fmt::Write;
 use std::io;
 use std::process::Command;
 use std::process::Output;
+
+const GENERATED_SOURCE_PRELUDE: &'static str = "extern crate mold;";
 
 fn rust_signature(signature: &ast::FunctionSignature) -> String {
     let mut result = String::new();
@@ -20,33 +23,59 @@ fn rust_signature(signature: &ast::FunctionSignature) -> String {
         first = false;
     }
 
-    write!(&mut result, ")").unwrap();
+    write!(&mut result, ") -> mold::Value").unwrap();
 
     result
 }
 
+#[derive(Debug, PartialEq, Clone)]
 pub struct ExternFunction {
     pub dylib_path: std::path::PathBuf,
-    pub function_symbol: String,
+    pub symbol_name: String,
 }
 
-pub fn external_eval<'a>(function: ExternFunction) -> eval::Value<'a> {
+pub fn external_eval_0<'a>(function: ExternFunction) -> eval::Value<'a> {
     use dylib::DynamicLibrary;
 
     // DynamicLibrary::prepend_search_path(std::path::Path::new("/Users/john/code/"));
     match DynamicLibrary::open(Some(&function.dylib_path)) {
         Err(e) => panic!("Error opening dylib: {}", e),
         Ok(lib) => {
-            let func: fn() -> () = unsafe {
-                match lib.symbol::<u8>("print") {
+            let func: fn() -> Value<'a> = unsafe {
+                match lib.symbol::<u8>(function.symbol_name.as_str()) {
                     Err(e) => panic!("Could not find symbol: {}", e),
                     Ok(f) => std::mem::transmute(f),
                 }
             };
-            func();
-            eval::Value::Unit(eval::types::Unit {})
+            func()
         }
     }
+}
+
+pub fn external_eval_1<'a>(function: ExternFunction, arg1: Value<'a>) -> Value<'a> {
+    use dylib::DynamicLibrary;
+
+    // DynamicLibrary::prepend_search_path(std::path::Path::new("/Users/john/code/"));
+    match DynamicLibrary::open(Some(&function.dylib_path)) {
+        Err(e) => panic!("Error opening dylib: {}", e),
+        Ok(lib) => {
+            let func: fn(Value<'a>) -> Value<'a> = unsafe {
+                match lib.symbol::<u8>(function.symbol_name.as_str()) {
+                    Err(e) => panic!("Could not find symbol: {}", e),
+                    Ok(f) => std::mem::transmute(f),
+                }
+            };
+            func(arg1)
+        }
+    }
+}
+
+fn generate_rust_source(f: &ast::RustFunctionDefinition) -> String {
+    let signature = rust_signature(&f.signature);
+    format!(
+        "{}\n#[no_mangle]\n{}{{ {} }}",
+        GENERATED_SOURCE_PRELUDE, signature, f.body
+    )
 }
 
 #[derive(Debug, PartialEq)]
@@ -57,16 +86,15 @@ pub struct ExternCompileError {
 pub fn compile_function(
     f: &ast::RustFunctionDefinition,
 ) -> Result<ExternFunction, ExternCompileError> {
-    let signature = rust_signature(&f.signature);
-    let function = format!("#[no_mangle]\n{}{{ {} }}", signature, f.body);
+    let source = generate_rust_source(f);
 
-    println!("Compiling function: {}", function);
+    println!("Compiling function: {}", source);
 
     let dir = std::env::temp_dir();
     let file_path = dir.with_file_name("temp.rs");
     let dylib_path = dir.with_file_name("temp.dylib");
     println!("To path: {}", file_path.to_str().unwrap());
-    std::fs::write(&file_path, function.as_str()).expect("Unable to write file");
+    std::fs::write(&file_path, source.as_str()).expect("Unable to write file");
 
     //--extern mold=target/debug/libmold.rlib --crate-type dylib
     let result = Command::new("rustc")
@@ -92,7 +120,7 @@ pub fn compile_function(
 
             Ok(ExternFunction {
                 dylib_path: dylib_path,
-                function_symbol: f.signature.name.clone(),
+                symbol_name: f.signature.name.clone(),
             })
         }
         Err(e) => {

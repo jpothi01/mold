@@ -74,12 +74,14 @@ pub struct TypeContent<'a> {
     methods: Methods<'a>,
 }
 pub type Variables<'a> = HashMap<Identifier, VariableContent<'a>>;
+pub type RustFunctions = HashMap<Identifier, types::RustFunction>;
 pub type Types<'a> = HashMap<TypeID, TypeContent<'a>>;
 
 #[derive(Clone)]
 pub struct Environment<'a> {
     variables: Variables<'a>,
     types: Types<'a>,
+    rust_functions: RustFunctions,
 }
 
 impl<'a> Environment<'a> {
@@ -87,6 +89,7 @@ impl<'a> Environment<'a> {
         let mut environment = Environment {
             variables: Variables::new(),
             types: Types::new(),
+            rust_functions: RustFunctions::new(),
         };
 
         // Hack to insert built-in types at startup
@@ -215,6 +218,61 @@ fn eval_op<'a>(
     }
 }
 
+fn eval_function_call<'a>(
+    expr: &'a Expr,
+    name: &'a str,
+    args: &'a Vec<Expr>,
+    environment: &mut Environment<'a>,
+) -> EvalResult<'a> {
+    let function_definition = &environment.variables[name];
+    let call_args = args;
+    match function_definition.value.clone() {
+        Value::Function(function) => {
+            let def_args = function.args;
+            if call_args.len() != def_args.len() {
+                Err(make_eval_error(
+                    expr,
+                    format!(
+                        "Expected {} arguments, got {}",
+                        def_args.len(),
+                        call_args.len()
+                    )
+                    .as_str(),
+                ))
+            } else {
+                let mut function_environment = environment.clone();
+                let num_args = def_args.len();
+                for i in 0..num_args {
+                    let arg_name = def_args[i].clone();
+                    let arg_expr = &call_args[i];
+                    let variable_content = VariableContent {
+                        expr: arg_expr,
+                        value: eval(arg_expr, environment)?,
+                    };
+
+                    function_environment
+                        .variables
+                        .insert(arg_name.clone(), variable_content);
+                }
+                eval(function.body, &mut function_environment)
+            }
+        }
+        _ => Err(make_eval_error(
+            expr,
+            format!("Expected {} to be a function", function_definition.value).as_str(),
+        )),
+    }
+}
+
+fn eval_rust_function_call<'a>(
+    expr: &'a Expr,
+    name: &'a str,
+    args: &'a Vec<Expr>,
+    environment: &mut Environment<'a>,
+) -> EvalResult<'a> {
+    panic!();
+}
+
 pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult<'a> {
     match expr {
         Expr::BinOp { op, lhs, rhs } => eval_op(op, lhs, rhs, environment),
@@ -241,14 +299,9 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
                         value: rhs_value,
                     };
 
-                    if !environment.variables.contains_key(identifier.as_str()) {
-                        environment
-                            .variables
-                            .insert(identifier.clone(), variable_content);
-                    } else {
-                        *environment.variables.get_mut(identifier.as_str()).unwrap() =
-                            variable_content;
-                    }
+                    environment
+                        .variables
+                        .insert(identifier.clone(), variable_content);
 
                     eval(rest, environment)
                 }
@@ -261,26 +314,22 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
                         body: &*function_definition.body,
                     }),
                 };
-                if !environment
+                environment
                     .variables
-                    .contains_key(function_definition.signature.name.as_str())
-                {
-                    environment
-                        .variables
-                        .insert(function_definition.signature.name.clone(), variable_content);
-                } else {
-                    *environment
-                        .variables
-                        .get_mut(function_definition.signature.name.as_str())
-                        .unwrap() = variable_content;
-                }
+                    .insert(function_definition.signature.name.clone(), variable_content);
 
                 eval(rest, environment)
             }
             Statement::RustFunctionDefinition(function_definition) => {
                 match rust::compile_function(function_definition) {
                     Ok(extern_function) => {
-                        rust::external_eval(extern_function);
+                        environment.rust_functions.insert(
+                            function_definition.signature.name.clone(),
+                            types::RustFunction {
+                                args: function_definition.signature.args.clone(),
+                                extern_function: extern_function,
+                            },
+                        );
                         eval(rest, environment)
                     }
                     Err(e) => Err(make_eval_error(expr, e.message.as_str())),
@@ -324,55 +373,9 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
         },
         Expr::FunctionCall { name, args } => {
             if environment.variables.contains_key(name.as_str()) {
-                let function_definition = &environment.variables[name.as_str()];
-                let call_args = args;
-                match function_definition.value.clone() {
-                    Value::Function(function) => {
-                        let def_args = function.args;
-                        if call_args.len() != def_args.len() {
-                            Err(make_eval_error(
-                                expr,
-                                format!(
-                                    "Expected {} arguments, got {}",
-                                    def_args.len(),
-                                    call_args.len()
-                                )
-                                .as_str(),
-                            ))
-                        } else {
-                            let mut function_environment = environment.clone();
-                            let num_args = def_args.len();
-                            for i in 0..num_args {
-                                let arg_name = def_args[i].clone();
-                                let arg_expr = &call_args[i];
-                                let variable_content = VariableContent {
-                                    expr: arg_expr,
-                                    value: eval(arg_expr, environment)?,
-                                };
-
-                                // TODO: there's got to be a simpler way to do this
-                                if !function_environment
-                                    .variables
-                                    .contains_key(arg_name.as_str())
-                                {
-                                    function_environment
-                                        .variables
-                                        .insert(arg_name.clone(), variable_content);
-                                } else {
-                                    *function_environment
-                                        .variables
-                                        .get_mut(arg_name.as_str())
-                                        .unwrap() = variable_content;
-                                }
-                            }
-                            eval(function.body, &mut function_environment)
-                        }
-                    }
-                    _ => Err(make_eval_error(
-                        expr,
-                        format!("Expected {} to be a function", function_definition.value).as_str(),
-                    )),
-                }
+                eval_function_call(expr, name.as_str(), args, environment)
+            } else if environment.rust_functions.contains_key(name.as_str()) {
+                eval_rust_function_call(expr, name.as_str(), args, environment)
             } else {
                 Err(make_eval_error(
                     expr,

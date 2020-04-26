@@ -1,9 +1,11 @@
-rust fn print() {
-    for i in vec!(1, 2).iter() {
-        print!("{} ", i);
+rust fn len(s) {
+    match s {
+        mold::Value::String(s) => {
+            let length = s.value.len();
+            mold::Value::Number(mold::Number::from(length as f64))
+        }
+        _ => panic!()
     }
-
-    println!();
 }
 
 print()
