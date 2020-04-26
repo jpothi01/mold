@@ -3,23 +3,34 @@ use std::fmt;
 #[derive(PartialEq, Clone)]
 pub enum Op {
     Plus,
+    And,
+    Or,
 }
 
 impl Op {
-    pub fn from_char(c: char) -> Option<Op> {
-        match c {
-            '+' => Some(Op::Plus),
+    pub fn from_str(s: &str) -> Option<Op> {
+        match s {
+            "+" => Some(Op::Plus),
+            "&&" => Some(Op::And),
+            "||" => Some(Op::Or),
             _ => None,
         }
     }
 
-    pub fn is_binop(c: char) -> bool {
-        Op::from_char(c).is_some()
+    pub fn is_first_char_of_binop(c: char) -> bool {
+        match c {
+            '+' => true,
+            '&' => true,
+            '|' => true,
+            _ => false,
+        }
     }
 
     pub fn precedence(&self) -> i32 {
         match self {
-            Op::Plus => 0,
+            Op::Plus => 2,
+            Op::And => 1,
+            Op::Or => 0,
         }
     }
 }
@@ -28,6 +39,8 @@ impl fmt::Debug for Op {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
             Op::Plus => "+",
+            Op::And => "&&",
+            Op::Or => "||",
         };
         write!(f, "{}", s)
     }

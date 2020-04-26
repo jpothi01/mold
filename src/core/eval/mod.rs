@@ -154,15 +154,69 @@ fn eval_function_definition<'a>(
     })
 }
 
+fn eval_op<'a>(
+    op: &'a Op,
+    lhs: &'a Expr,
+    rhs: &'a Expr,
+    environment: &mut Environment<'a>,
+) -> EvalResult<'a> {
+    let lhs_value = eval(&*lhs, environment)?;
+    let rhs_value = eval(&*rhs, environment)?;
+
+    match op {
+        Op::Plus => Ok(lhs_value + rhs_value),
+        Op::And => match lhs_value {
+            Value::Bool(lhs_bool) => match rhs_value {
+                Value::Bool(rhs_bool) => Ok(Value::Bool(types::Bool {
+                    value: lhs_bool.value && rhs_bool.value,
+                })),
+                _ => Err(make_eval_error(
+                    rhs,
+                    format!(
+                        "Expected expression of type Bool, got {}",
+                        rhs_value.type_id()
+                    )
+                    .as_str(),
+                )),
+            },
+            _ => Err(make_eval_error(
+                lhs,
+                format!(
+                    "Expected expression of type Bool, got {}",
+                    lhs_value.type_id()
+                )
+                .as_str(),
+            )),
+        },
+        Op::Or => match lhs_value {
+            Value::Bool(lhs_bool) => match rhs_value {
+                Value::Bool(rhs_bool) => Ok(Value::Bool(types::Bool {
+                    value: lhs_bool.value || rhs_bool.value,
+                })),
+                _ => Err(make_eval_error(
+                    rhs,
+                    format!(
+                        "Expected expression of type Bool, got {}",
+                        rhs_value.type_id()
+                    )
+                    .as_str(),
+                )),
+            },
+            _ => Err(make_eval_error(
+                lhs,
+                format!(
+                    "Expected expression of type Bool, got {}",
+                    lhs_value.type_id()
+                )
+                .as_str(),
+            )),
+        },
+    }
+}
+
 pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult<'a> {
     match expr {
-        Expr::BinOp { op, lhs, rhs } => match op {
-            Op::Plus => {
-                let lhs_value = eval(&*lhs, environment)?;
-                let rhs_value = eval(&*rhs, environment)?;
-                Ok(lhs_value + rhs_value)
-            }
-        },
+        Expr::BinOp { op, lhs, rhs } => eval_op(op, lhs, rhs, environment),
         Expr::Unit => Ok(Value::Unit(types::Unit {})),
         Expr::Number(number) => Ok(Value::Number(types::Number { value: *number })),
         Expr::String(s) => Ok(Value::String(types::String {

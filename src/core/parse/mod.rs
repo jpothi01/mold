@@ -145,6 +145,28 @@ fn make_parse_error(parser_state: &ParserState, msg: &str) -> ParseError {
     }
 }
 
+fn parse_binop(parser_state: &mut ParserState, consume: bool) -> Result<Op, ParseError> {
+    debug_println!("parse_binop: {:?}", parser_state);
+    debug_assert!(parser_state.remaining_input.len() >= 1);
+    if let Some(single_character_op) = Op::from_str(&parser_state.remaining_input[0..1]) {
+        if consume {
+            parser_state.consume_character();
+        }
+        return Ok(single_character_op);
+    }
+    if parser_state.remaining_input.len() >= 2 {
+        if let Some(double_character_op) = Op::from_str(&parser_state.remaining_input[0..2]) {
+            if consume {
+                parser_state.consume_n_characters(2);
+            }
+            return Ok(double_character_op);
+        }
+    }
+    return Err(make_parse_error(parser_state, "Expected binary operator"));
+}
+
+// If you ever forget how the hell this works, go to the LLVM tutorial on parsing
+// binary expressions. It's really confusing.
 fn parse_binop_rhs(
     parser_state: &mut ParserState,
     lhs: Expr,
@@ -155,14 +177,14 @@ fn parse_binop_rhs(
 
     let mut new_lhs = lhs;
     loop {
+        parser_state.consume_until_nonwhitespace();
         let maybe_next_character = parser_state.next_character();
         if maybe_next_character.is_none() {
             return Ok(new_lhs);
         }
 
         let next_character = maybe_next_character.unwrap();
-        let maybe_op = Op::from_char(next_character);
-        if maybe_op.is_none() {
+        if !Op::is_first_char_of_binop(next_character) {
             if !is_expression_terminator(next_character) && !next_character.is_whitespace() {
                 return Err(make_parse_error(parser_state, "Expected operator."));
             }
@@ -170,7 +192,7 @@ fn parse_binop_rhs(
             return Ok(new_lhs);
         }
 
-        let op = maybe_op.unwrap();
+        let op = parse_binop(parser_state, false)?;
         let op_precedence = op.precedence();
 
         if op_precedence < minimum_precedence {
@@ -179,20 +201,23 @@ fn parse_binop_rhs(
             return Ok(new_lhs);
         }
 
-        parser_state.consume_character();
-
+        // Must delay consuming the op, because we might have chosen to not parse it in this call to
+        // parse_binop_rhs.
+        parse_binop(parser_state, true).unwrap();
+        parser_state.consume_until_nonwhitespace();
         let next_primary_expr = parse_primary(parser_state)?;
         debug_println!("next_primary_expr: {:?}", next_primary_expr);
         debug_println!("{:?}", parser_state);
 
-        // Clean this up
+        parser_state.consume_until_nonwhitespace();
+
         let rhs = if parser_state.remaining_input.len() > 0
-            && Op::is_binop(parser_state.next_character().unwrap())
+            && Op::is_first_char_of_binop(parser_state.next_character().unwrap())
         {
-            let next_op = Op::from_char(parser_state.next_character().unwrap()).unwrap();
+            let next_op = parse_binop(parser_state, false)?;
             let next_precedence = next_op.precedence();
             if next_precedence > op_precedence {
-                parse_binop_rhs(parser_state, next_primary_expr, op_precedence + 1)?
+                parse_binop_rhs(parser_state, next_primary_expr, next_precedence)?
             } else {
                 next_primary_expr
             }
@@ -564,7 +589,7 @@ fn parse_expr(parser_state: &mut ParserState) -> ParseResult {
     let maybe_next_character = parser_state.next_character();
     if maybe_next_character.is_some() {
         let next_character = maybe_next_character.unwrap();
-        if Op::is_binop(next_character) {
+        if Op::is_first_char_of_binop(next_character) {
             parse_binop_rhs(parser_state, primary, -1)
         } else if is_expression_terminator(next_character) {
             Ok(primary)
@@ -926,5 +951,29 @@ mod tests {
                 ))
             ))
         )
+    }
+
+    #[test]
+    fn parse_complex_binops() {
+        assert_eq!(
+            parse("true && false || false && true || false"),
+            Ok(Expr::BinOp {
+                op: Op::Or,
+                lhs: Box::new(Expr::BinOp {
+                    op: Op::Or,
+                    lhs: Box::new(Expr::BinOp {
+                        op: Op::And,
+                        lhs: Box::new(Expr::Bool(true)),
+                        rhs: Box::new(Expr::Bool(false)),
+                    }),
+                    rhs: Box::new(Expr::BinOp {
+                        op: Op::And,
+                        lhs: Box::new(Expr::Bool(false)),
+                        rhs: Box::new(Expr::Bool(true)),
+                    })
+                }),
+                rhs: Box::new(Expr::Bool(false))
+            })
+        );
     }
 }
