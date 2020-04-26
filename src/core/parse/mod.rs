@@ -7,6 +7,7 @@ use ast::FunctionSignature;
 use ast::Identifier;
 use ast::IfElse;
 use ast::Op;
+use ast::RustFunctionDefinition;
 use ast::Statement;
 use std::fmt;
 use std::fmt::Debug;
@@ -98,6 +99,7 @@ mod keywords {
     pub const ELSE: &'static str = "else";
     pub const TRUE: &'static str = "true";
     pub const FALSE: &'static str = "false";
+    pub const RUST_FUNCTION: &'static str = "rust fn";
 }
 
 impl fmt::Display for ParseError {
@@ -449,17 +451,10 @@ fn parse_primary(parser_state: &mut ParserState) -> ParseResult {
     return parse_number(parser_state);
 }
 
-fn parse_function_definition(
+fn parse_function_signature(
     parser_state: &mut ParserState,
-) -> Result<FunctionDefinition, ParseError> {
-    debug_println!("parser_function_definition: {:?}", parser_state);
-
-    debug_assert!(starts_with_keyword(
-        parser_state.remaining_input,
-        keywords::FUNCTION
-    ));
-    parser_state.consume_n_characters(keywords::FUNCTION.len());
-    parser_state.consume_until_nonwhitespace();
+) -> Result<FunctionSignature, ParseError> {
+    debug_println!("parse_function_signature: {:?}", parser_state);
     let name = parse_identifier(parser_state)?;
 
     parser_state.expect_character_and_consume('(')?;
@@ -475,6 +470,24 @@ fn parse_function_definition(
     }
 
     parser_state.expect_character_and_consume(')')?;
+    Ok(FunctionSignature {
+        name: name,
+        args: args,
+    })
+}
+
+fn parse_function_definition(
+    parser_state: &mut ParserState,
+) -> Result<FunctionDefinition, ParseError> {
+    debug_println!("parser_function_definition: {:?}", parser_state);
+
+    debug_assert!(starts_with_keyword(
+        parser_state.remaining_input,
+        keywords::FUNCTION
+    ));
+    parser_state.consume_n_characters(keywords::FUNCTION.len());
+    parser_state.consume_until_nonwhitespace();
+    let signature = parse_function_signature(parser_state)?;
     parser_state.consume_until_nonwhitespace();
     parser_state.expect_character_and_consume('{')?;
 
@@ -484,10 +497,7 @@ fn parse_function_definition(
     parser_state.consume_until_nonwhitespace();
 
     Ok(FunctionDefinition {
-        signature: FunctionSignature {
-            name: name,
-            args: args,
-        },
+        signature: signature,
         body: Box::new(body),
     })
 }
@@ -498,6 +508,59 @@ fn parse_function_definition_expr(parser_state: &mut ParserState) -> ParseResult
     let rest = parse_expr(parser_state)?;
     Ok(Expr::Statement(
         Statement::FunctionDefinition(function_definition),
+        Box::new(rest),
+    ))
+}
+
+fn parse_rust_function_definition(
+    parser_state: &mut ParserState,
+) -> Result<RustFunctionDefinition, ParseError> {
+    debug_assert!(starts_with_keyword(
+        parser_state.remaining_input,
+        keywords::RUST_FUNCTION
+    ));
+    parser_state.consume_n_characters(keywords::RUST_FUNCTION.len());
+    parser_state.consume_until_nonwhitespace();
+    let signature = parse_function_signature(parser_state)?;
+    parser_state.consume_until_nonwhitespace();
+    parser_state.expect_character_and_consume('{')?;
+
+    // Dead stupid way to detect the end of the rust block: count curly braces
+    // If it ever turns negative, that's where the enclosing '}' is.
+    // This breaks if there are comments with braces in them, but whatever, those
+    // braces will most likely be balanced.
+    let mut number_of_braces = 0i32;
+    let mut index_of_enclosing_brace = 0usize;
+    for c in parser_state.remaining_input.chars() {
+        if c == '{' {
+            number_of_braces += 1;
+        } else if c == '}' {
+            number_of_braces -= 1;
+        }
+
+        if number_of_braces < 0 {
+            break;
+        }
+
+        index_of_enclosing_brace += 1;
+    }
+
+    let body = String::from(&parser_state.remaining_input[0..index_of_enclosing_brace]);
+    parser_state.remaining_input = &parser_state.remaining_input[index_of_enclosing_brace..];
+    debug_assert!(parser_state.next_character() == Some('}'));
+    parser_state.expect_character_and_consume('}')?;
+    Ok(RustFunctionDefinition {
+        signature: signature,
+        body: body,
+    })
+}
+
+fn parse_rust_function_definition_expr(parser_state: &mut ParserState) -> ParseResult {
+    debug_println!("parse_rust_function_definition_expr: {:?}", parser_state);
+    let function_definition = parse_rust_function_definition(parser_state)?;
+    let rest = parse_expr(parser_state)?;
+    Ok(Expr::Statement(
+        Statement::RustFunctionDefinition(function_definition),
         Box::new(rest),
     ))
 }
@@ -591,6 +654,10 @@ fn parse_expr(parser_state: &mut ParserState) -> ParseResult {
     debug_println!("parse_expr: {:?}", parser_state);
 
     parser_state.consume_until_nonwhitespace();
+
+    if starts_with_keyword(parser_state.remaining_input, keywords::RUST_FUNCTION) {
+        return parse_rust_function_definition_expr(parser_state);
+    }
 
     if starts_with_keyword(parser_state.remaining_input, keywords::FUNCTION) {
         return parse_function_definition_expr(parser_state);
@@ -1020,5 +1087,36 @@ mod tests {
                 rhs: Box::new(Expr::Bool(false))
             })
         );
+    }
+
+    #[test]
+    fn parse_rust_function() {
+        assert_eq!(
+            parse(
+                r#"
+rust fn print() {
+    println!("Hello, world!")
+}
+
+print()"#
+            ),
+            Ok(Expr::Statement(
+                Statement::RustFunctionDefinition(RustFunctionDefinition {
+                    signature: FunctionSignature {
+                        name: Identifier::from("print"),
+                        args: vec!()
+                    },
+                    body: String::from(
+                        r#"
+    println!("Hello, world!")
+"#
+                    )
+                }),
+                Box::new(Expr::FunctionCall {
+                    name: Identifier::from("print"),
+                    args: vec!()
+                })
+            ))
+        )
     }
 }

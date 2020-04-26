@@ -74,7 +74,7 @@ impl fmt::Debug for FunctionDefinition {
 #[derive(PartialEq, Clone)]
 pub struct RustFunctionDefinition {
     pub signature: FunctionSignature,
-    pub body: Box<Expr>,
+    pub body: String,
 }
 
 impl fmt::Debug for RustFunctionDefinition {

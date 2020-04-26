@@ -1,8 +1,5 @@
-a = if false {
-    true
-} else if true {
-    2
-} else { 3 }
+rust fn print() {
+    println!("Hello, world!")
+}
 
-
-a
+print()
