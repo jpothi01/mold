@@ -50,6 +50,23 @@ impl fmt::Debug for FunctionDefinition {
 }
 
 #[derive(PartialEq, Clone)]
+pub struct IfElse {
+    pub condition: Box<Expr>,
+    pub if_branch: Box<Expr>,
+    pub else_branch: Box<Expr>,
+}
+
+impl fmt::Debug for IfElse {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "(ifelse {:?} {:?} {:?})",
+            self.condition, self.if_branch, self.else_branch
+        )
+    }
+}
+
+#[derive(PartialEq, Clone)]
 pub enum Statement {
     Assignment {
         lhs: AssignmentLHS,
@@ -60,6 +77,7 @@ pub enum Statement {
         tid: TypeID,
         methods: Vec<FunctionDefinition>,
     },
+    IfElse(IfElse),
 }
 
 #[derive(PartialEq, Clone)]
@@ -83,11 +101,7 @@ pub enum Expr {
         target: Box<Expr>,
         args: Vec<Expr>,
     },
-    IfElse {
-        condition: Box<Expr>,
-        if_branch: Box<Expr>,
-        else_branch: Box<Expr>,
-    },
+    IfElse(IfElse),
 }
 
 #[derive(PartialEq, Clone)]
@@ -126,6 +140,7 @@ impl fmt::Debug for Expr {
                         }
                         write!(f, ")")
                     }
+                    Statement::IfElse(ifelse) => write!(f, "{:?}", ifelse),
                 }?;
 
                 write!(f, " {:?}", rest)
@@ -145,15 +160,7 @@ impl fmt::Debug for Expr {
                 }
                 write!(f, ")")
             }
-            Expr::IfElse {
-                condition,
-                if_branch,
-                else_branch,
-            } => write!(
-                f,
-                "(ifelse {:?} {:?} {:?}",
-                condition, if_branch, else_branch
-            ),
+            Expr::IfElse(ifelse) => write!(f, "{:?}", ifelse),
         }
     }
 }

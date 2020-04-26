@@ -257,6 +257,7 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
 
                 eval(rest, environment)
             }
+            Statement::IfElse(ifelse) => panic!(),
         },
         Expr::FunctionCall { name, args } => {
             if environment.variables.contains_key(name.as_str()) {
@@ -402,11 +403,7 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
             }
             eval(function_definition.body, &mut function_environment)
         }
-        Expr::IfElse {
-            condition,
-            if_branch,
-            else_branch,
-        } => panic!(),
+        Expr::IfElse(ifelse) => panic!(),
     }
 }
 

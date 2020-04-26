@@ -4,6 +4,7 @@ use ast::AssignmentLHS;
 use ast::Expr;
 use ast::FunctionDefinition;
 use ast::Identifier;
+use ast::IfElse;
 use ast::Op;
 use ast::Statement;
 use std::fmt;
@@ -513,11 +514,11 @@ fn parse_if_else(parser_state: &mut ParserState) -> ParseResult {
     parser_state.expect_character_and_consume('}')?;
     parser_state.consume_until_nonwhitespace();
 
-    Ok(Expr::IfElse {
+    Ok(Expr::IfElse(IfElse {
         condition: Box::new(condition),
         if_branch: Box::new(if_branch),
         else_branch: Box::new(else_branch),
-    })
+    }))
 }
 
 fn parse_expr(parser_state: &mut ParserState) -> ParseResult {
@@ -870,11 +871,11 @@ mod tests {
     fn parse_if_else() {
         assert_eq!(
             parse("if x { 1 } else { 2 }"),
-            Ok(Expr::IfElse {
+            Ok(Expr::IfElse(IfElse {
                 condition: Box::new(Expr::Ident(Identifier::from("x"))),
                 if_branch: Box::new(Expr::Number(1f64)),
                 else_branch: Box::new(Expr::Number(2f64)),
-            })
+            }))
         )
     }
 }

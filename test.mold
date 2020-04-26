@@ -4,4 +4,4 @@ impl Number {
     }
 }
 
-(2).increment()
+((2+1).increment()).increment()
