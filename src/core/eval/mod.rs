@@ -276,6 +276,7 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
 
                 eval(rest, environment)
             }
+            Statement::RustFunctionDefinition(function_definition) => panic!(),
             Statement::Impl { tid, methods } => {
                 if !environment.types.contains_key(tid.as_str()) {
                     return Err(make_eval_error(

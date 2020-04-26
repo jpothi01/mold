@@ -737,8 +737,10 @@ mod tests {
             ),
             Ok(Expr::Statement(
                 Statement::FunctionDefinition(FunctionDefinition {
-                    name: Identifier::from("f"),
-                    args: vec!(Identifier::from("a"), Identifier::from("b")),
+                    signature: FunctionSignature {
+                        name: Identifier::from("f"),
+                        args: vec!(Identifier::from("a"), Identifier::from("b")),
+                    },
                     body: Box::new(Expr::BinOp {
                         op: Op::Plus,
                         lhs: Box::new(Expr::Ident(Identifier::from("a"))),
@@ -766,14 +768,18 @@ mod tests {
             ),
             Ok(Expr::Statement(
                 Statement::FunctionDefinition(FunctionDefinition {
-                    name: Identifier::from("f"),
-                    args: vec!(Identifier::from("a")),
+                    signature: FunctionSignature {
+                        name: Identifier::from("f"),
+                        args: vec!(Identifier::from("a")),
+                    },
                     body: Box::new(Expr::Ident(Identifier::from("a")))
                 }),
                 Box::new(Expr::Statement(
                     Statement::FunctionDefinition(FunctionDefinition {
-                        name: Identifier::from("g"),
-                        args: vec!(Identifier::from("b")),
+                        signature: FunctionSignature {
+                            name: Identifier::from("g"),
+                            args: vec!(Identifier::from("b")),
+                        },
                         body: Box::new(Expr::Ident(Identifier::from("b")))
                     }),
                     Box::new(Expr::Unit)
@@ -832,8 +838,10 @@ mod tests {
             ),
             Ok(Expr::Statement(
                 Statement::FunctionDefinition(FunctionDefinition {
-                    name: Identifier::from("f"),
-                    args: vec!(Identifier::from("x")),
+                    signature: FunctionSignature {
+                        name: Identifier::from("f"),
+                        args: vec!(Identifier::from("x")),
+                    },
                     body: Box::new(Expr::BinOp {
                         op: Op::Plus,
                         lhs: Box::new(Expr::Ident(Identifier::from("x"))),
@@ -893,13 +901,17 @@ mod tests {
                     tid: TypeID::from("String"),
                     methods: vec!(
                         FunctionDefinition {
-                            name: Identifier::from("len"),
-                            args: vec!(Identifier::from("self")),
+                            signature: FunctionSignature {
+                                name: Identifier::from("len"),
+                                args: vec!(Identifier::from("self")),
+                            },
                             body: Box::new(Expr::Number(2f64))
                         },
                         FunctionDefinition {
-                            name: Identifier::from("g"),
-                            args: Vec::new(),
+                            signature: FunctionSignature {
+                                name: Identifier::from("g"),
+                                args: Vec::new(),
+                            },
                             body: Box::new(Expr::Number(3f64))
                         }
                     )

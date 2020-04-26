@@ -72,6 +72,22 @@ impl fmt::Debug for FunctionDefinition {
 }
 
 #[derive(PartialEq, Clone)]
+pub struct RustFunctionDefinition {
+    pub signature: FunctionSignature,
+    pub body: Box<Expr>,
+}
+
+impl fmt::Debug for RustFunctionDefinition {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "(rustfn {:?} ({:?}) {:?})",
+            self.signature.name, self.signature.args, self.body
+        )
+    }
+}
+
+#[derive(PartialEq, Clone)]
 pub struct IfElse {
     pub condition: Box<Expr>,
     pub if_branch: Box<Expr>,
@@ -95,6 +111,7 @@ pub enum Statement {
         rhs: Box<Expr>,
     },
     FunctionDefinition(FunctionDefinition),
+    RustFunctionDefinition(RustFunctionDefinition),
     Impl {
         tid: TypeID,
         methods: Vec<FunctionDefinition>,
@@ -155,6 +172,9 @@ impl fmt::Debug for Expr {
                         write!(f, "(assign {:?} {:?} {:?})", lhs, rhs, rest)
                     }
                     Statement::FunctionDefinition(function_definition) => {
+                        write!(f, "{:?}", function_definition)
+                    }
+                    Statement::RustFunctionDefinition(function_definition) => {
                         write!(f, "{:?}", function_definition)
                     }
                     Statement::Impl { tid, methods } => {
