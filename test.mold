@@ -1,7 +1,5 @@
-impl Number {
-    fn increment(self) {
-        self + 1
-    }
+if false {
+    false
+} else {
+    true
 }
-
-((2+1).increment()).increment()

@@ -168,6 +168,7 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
         Expr::String(s) => Ok(Value::String(types::String {
             contents: s.clone(),
         })),
+        Expr::Bool(b) => Ok(Value::Bool(types::Bool { value: *b })),
         Expr::Ident(id) => {
             if environment.variables.contains_key(id.as_str()) {
                 eval(environment.variables[id].expr, environment)
@@ -403,13 +404,27 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
             }
             eval(function_definition.body, &mut function_environment)
         }
-        Expr::IfElse(ifelse) => panic!(),
+        Expr::IfElse(ifelse) => {
+            let condition_value = eval(&ifelse.condition, environment)?;
+            match condition_value {
+                Value::Bool(b) => {
+                    if b.value {
+                        eval(&*ifelse.if_branch, environment)
+                    } else {
+                        eval(&*ifelse.else_branch, environment)
+                    }
+                }
+                _ => Err(make_eval_error(expr, "Expected expression returning Bool")),
+            }
+        }
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::core::parse::ast::IfElse;
+
     #[test]
     fn trivial_evaluation() {
         assert_eq!(
@@ -432,6 +447,21 @@ mod test {
             Ok(Value::String(types::String {
                 contents: String::from("hello, world")
             }))
+        );
+    }
+
+    #[test]
+    fn simple_if_else() {
+        assert_eq!(
+            eval(
+                &Expr::IfElse(IfElse {
+                    condition: Box::new(Expr::Bool(true)),
+                    if_branch: Box::new(Expr::Number(1f64)),
+                    else_branch: Box::new(Expr::Number(2f64)),
+                }),
+                &mut Environment::new()
+            ),
+            Ok(Value::Number(types::Number { value: 1f64 }))
         );
     }
 

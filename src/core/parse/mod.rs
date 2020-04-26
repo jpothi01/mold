@@ -85,7 +85,9 @@ fn is_expression_terminator(c: char) -> bool {
 }
 
 fn starts_with_keyword(s: &str, keyword: &str) -> bool {
-    s.starts_with(keyword) && s.chars().nth(keyword.len()) == Some(' ')
+    let character_after_keyword = s.chars().nth(keyword.len());
+    s.starts_with(keyword)
+        && (character_after_keyword.is_none() || character_after_keyword.unwrap().is_whitespace())
 }
 
 mod keywords {
@@ -93,6 +95,8 @@ mod keywords {
     pub const IMPL: &'static str = "impl";
     pub const IF: &'static str = "if";
     pub const ELSE: &'static str = "else";
+    pub const TRUE: &'static str = "true";
+    pub const FALSE: &'static str = "false";
 }
 
 impl fmt::Display for ParseError {
@@ -355,6 +359,20 @@ fn parse_method_call(parser_state: &mut ParserState, target: Expr) -> ParseResul
     });
 }
 
+fn parse_bool_literal(parser_state: &mut ParserState) -> ParseResult {
+    if starts_with_keyword(parser_state.remaining_input, keywords::TRUE) {
+        parser_state.consume_n_characters(keywords::TRUE.len());
+        return Ok(Expr::Bool(true));
+    }
+
+    debug_assert!(starts_with_keyword(
+        parser_state.remaining_input,
+        keywords::FALSE
+    ));
+    parser_state.consume_n_characters(keywords::FALSE.len());
+    Ok(Expr::Bool(false))
+}
+
 fn parse_primary(parser_state: &mut ParserState) -> ParseResult {
     // Base case: We parse the rhs of a binary or unary operation
     // Recursive case: We need to parse the rhs of a binary operation
@@ -364,6 +382,12 @@ fn parse_primary(parser_state: &mut ParserState) -> ParseResult {
 
     if starts_with_keyword(parser_state.remaining_input, keywords::IF) {
         return parse_if_else(parser_state);
+    }
+
+    if starts_with_keyword(parser_state.remaining_input, keywords::TRUE)
+        || starts_with_keyword(parser_state.remaining_input, keywords::FALSE)
+    {
+        return parse_bool_literal(parser_state);
     }
 
     let maybe_next_character = parser_state.next_character();
@@ -876,6 +900,31 @@ mod tests {
                 if_branch: Box::new(Expr::Number(1f64)),
                 else_branch: Box::new(Expr::Number(2f64)),
             }))
+        )
+    }
+
+    #[test]
+    fn parse_bool_literal() {
+        assert_eq!(
+            parse(
+                r#"
+            a = true
+            b = false
+            "#
+            ),
+            Ok(Expr::Statement(
+                Statement::Assignment {
+                    lhs: AssignmentLHS::Single(Identifier::from("a")),
+                    rhs: Box::new(Expr::Bool(true))
+                },
+                Box::new(Expr::Statement(
+                    Statement::Assignment {
+                        lhs: AssignmentLHS::Single(Identifier::from("b")),
+                        rhs: Box::new(Expr::Bool(false))
+                    },
+                    Box::new(Expr::Unit)
+                ))
+            ))
         )
     }
 }

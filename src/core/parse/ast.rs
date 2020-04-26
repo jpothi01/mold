@@ -90,6 +90,7 @@ pub enum Expr {
     Unit,
     Number(f64),
     String(String),
+    Bool(bool),
     Ident(Identifier),
     Statement(Statement, Box<Expr>),
     FunctionCall {
@@ -124,6 +125,7 @@ impl fmt::Debug for Expr {
             Expr::Unit => write!(f, "()"),
             Expr::Number(n) => write!(f, "({:?})", n),
             Expr::String(s) => write!(f, "({:?}", s),
+            Expr::Bool(b) => write!(f, "({})", if *b { "true" } else { "false" }),
             Expr::Ident(i) => write!(f, "(id {:?})", i),
             Expr::Statement(statement, rest) => {
                 match statement {
