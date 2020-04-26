@@ -4,3 +4,5 @@
 
 * Runtime
 ** TODO evaluation errors should not panic, they should return EvalError...maybe?
+
+** TODO Unit literal

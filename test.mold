@@ -1,6 +1,8 @@
-a = if true {
+a = if false {
     true
-} else {
+} else if true {
     2
-}
+} else { 3 }
+
+
 a

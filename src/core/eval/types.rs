@@ -9,7 +9,7 @@ pub trait Type {
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct String {
-    pub contents: std::string::String,
+    pub value: std::string::String,
 }
 
 impl Type for String {

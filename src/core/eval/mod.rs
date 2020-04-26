@@ -46,7 +46,7 @@ impl<'a> fmt::Display for Value<'a> {
 
                 write!(f, " {:?})", function.body)
             }
-            Value::String(s) => write!(f, "{}", s.contents),
+            Value::String(s) => write!(f, "{}", s.value),
             Value::Unit(_) => write!(f, "()"),
         }
     }
@@ -118,7 +118,7 @@ impl<'a> ops::Add<Value<'a>> for Value<'a> {
             },
             Value::String(s1) => match rhs {
                 Value::String(s2) => Value::String(types::String {
-                    contents: s1.contents + s2.contents.as_str(),
+                    value: s1.value + s2.value.as_str(),
                 }),
                 _ => panic!("Mismatched types for '+'"),
             },
@@ -219,9 +219,7 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
         Expr::BinOp { op, lhs, rhs } => eval_op(op, lhs, rhs, environment),
         Expr::Unit => Ok(Value::Unit(types::Unit {})),
         Expr::Number(number) => Ok(Value::Number(types::Number { value: *number })),
-        Expr::String(s) => Ok(Value::String(types::String {
-            contents: s.clone(),
-        })),
+        Expr::String(s) => Ok(Value::String(types::String { value: s.clone() })),
         Expr::Bool(b) => Ok(Value::Bool(types::Bool { value: *b })),
         Expr::Ident(id) => {
             if environment.variables.contains_key(id.as_str()) {
