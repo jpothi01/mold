@@ -1,7 +1,6 @@
-if false && true {
+a = if true {
     true
-} else false {
-    false
 } else {
     2
 }
+a

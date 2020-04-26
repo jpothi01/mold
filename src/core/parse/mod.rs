@@ -576,7 +576,6 @@ fn parse_if_else(parser_state: &mut ParserState) -> ParseResult {
     if else_branch.is_err() {
         return else_branch;
     }
-    parser_state.consume_until_nonwhitespace();
 
     Ok(Expr::IfElse(IfElse {
         condition: Box::new(condition),
