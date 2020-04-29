@@ -41,7 +41,8 @@ rust fn sqrt(s) { // Mold code
 
 a = 3
 b = 6
+
 // Mold code
-a = sqrt(a + b) // a is 3
+print(sqrt(a + b)) // "3"
 ```
 
