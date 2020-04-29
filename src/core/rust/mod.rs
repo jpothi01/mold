@@ -95,8 +95,8 @@ pub fn compile_function(
     println!("Compiling function:\n {}", source);
 
     let dir = std::env::temp_dir();
-    let file_path = dir.with_file_name("temp.rs");
-    let dylib_path = dir.with_file_name("temp.dylib");
+    let file_path = dir.with_file_name(format!("{}.rs", f.signature.name));
+    let dylib_path = dir.with_file_name(format!("{}.dylib", f.signature.name));
     println!("To path: {}", file_path.to_str().unwrap());
     std::fs::write(&file_path, source.as_str()).expect("Unable to write file");
 

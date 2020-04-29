@@ -8,8 +8,18 @@ rust fn sqrt(s) {
     }
 }
 
+rust fn square(s) {
+    // This is a rust function, compiled by rustc
+    match s {
+        mold::Value::Number(n) => {
+            mold::Value::Number(mold::Number::from(n.value * n.value))
+        }
+        _ => panic!("Expected a mold::Number")
+    }
+}
+
 a = 3
 b = 6
 
 // Call rust function with mold
-sqrt(a + b) // Prints "3"
+square(sqrt(a + b)) // Prints "3"

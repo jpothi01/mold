@@ -29,8 +29,8 @@ print(a.increment()) // Prints "Hello + 1"
 ## Seamless Rust interop
 
 ```
-rust fn sqrt(s) {
-    // This is a rust function, compiled by rustc
+rust fn sqrt(s) { // Mold code
+    // Rust code, compiled by rustc
     match s {
         mold::Value::Number(n) => {
             mold::Value::Number(mold::Number::from(n.value.sqrt()))
@@ -41,8 +41,7 @@ rust fn sqrt(s) {
 
 a = 3
 b = 6
-
-// Call rust function with mold
-c = sqrt(a + b) // c is 3
+// Mold code
+a = sqrt(a + b) // a is 3
 ```
 
