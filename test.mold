@@ -1,1 +1,1 @@
-read_to_string("/Users/john/code/mold/test.rs")
+write("/Users/john/code/mold/babys_first_write.txt", "Please work")

@@ -50,6 +50,19 @@ fn insert_stdlib(environment: &mut Environment) {
             }),
         },
     );
+
+    environment.rust_functions.insert(
+        parse::ast::Identifier::from("write"),
+        mold::RustFunction {
+            args: vec![
+                parse::ast::Identifier::from("file_path"),
+                parse::ast::Identifier::from("content"),
+            ],
+            native_function: rust::NativeFunction::Static2(rust::StaticNativeFunction2 {
+                function: stdlib::io::write,
+            }),
+        },
+    );
 }
 
 fn main() {

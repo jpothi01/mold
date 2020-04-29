@@ -293,8 +293,8 @@ fn eval_rust_function_call<'a>(
         arg_values.push(eval(arg_expr, environment)?);
     }
 
-    if arg_values.len() == 1 {
-        match function_definition.native_function {
+    match arg_values.len() {
+        1 => match function_definition.native_function {
             rust::NativeFunction::Dynamic(dynamic_function) => Ok(rust::external_eval_1(
                 &dynamic_function,
                 arg_values[0].clone(),
@@ -302,12 +302,20 @@ fn eval_rust_function_call<'a>(
             rust::NativeFunction::Static1(static_function) => {
                 Ok((static_function.function)(arg_values[0].clone()))
             }
-        }
-    } else {
-        Err(make_eval_error(
+            rust::NativeFunction::Static2(_) => panic!("Wrong number of args"),
+        },
+        2 => match function_definition.native_function {
+            rust::NativeFunction::Dynamic(dynamic_function) => panic!("Not implemented"),
+            rust::NativeFunction::Static1(_) => panic!("Wrong number of args"),
+            rust::NativeFunction::Static2(static_function) => Ok((static_function.function)(
+                arg_values[0].clone(),
+                arg_values[1].clone(),
+            )),
+        },
+        _ => Err(make_eval_error(
             expr,
             format!("Unsupported number rust fn args: {}", arg_values.len()).as_str(),
-        ))
+        )),
     }
 }
 

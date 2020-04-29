@@ -59,10 +59,35 @@ impl Clone for StaticNativeFunction1 {
     }
 }
 
+pub struct StaticNativeFunction2 {
+    pub function: for<'a> fn(Value<'a>, Value<'a>) -> Value<'a>,
+}
+
+impl Debug for StaticNativeFunction2 {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "StaticNativeFunction2(0x{:x})", self.function as usize)
+    }
+}
+
+impl PartialEq for StaticNativeFunction2 {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.function as usize == rhs.function as usize
+    }
+}
+
+impl Clone for StaticNativeFunction2 {
+    fn clone(&self) -> Self {
+        StaticNativeFunction2 {
+            function: self.function.clone(),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum NativeFunction {
     Dynamic(DynamicNativeFunction),
     Static1(StaticNativeFunction1),
+    Static2(StaticNativeFunction2),
 }
 
 pub fn external_eval_1<'a>(function: &DynamicNativeFunction, arg1: Value<'a>) -> Value<'a> {
