@@ -1,10 +1,10 @@
 use mold::core::eval;
 use mold::core::eval::Environment;
 use mold::core::parse;
-use std::env;
+use mold::core::rust;
+use mold::stdlib;
 use std::fmt;
 use std::fs;
-use std::path;
 extern crate dylib;
 extern crate term;
 
@@ -29,6 +29,19 @@ fn print_error<T: fmt::Display>(error: T) {
     let _ = terminal.reset();
 }
 
+fn insert_stdlib(environment: &mut Environment) {
+    // Obviously this needs to be magicalized
+    environment.rust_functions.insert(
+        parse::ast::Identifier::from("print"),
+        mold::RustFunction {
+            args: vec![parse::ast::Identifier::from("arg1")],
+            native_function: rust::NativeFunction::Static1(rust::StaticNativeFunction1 {
+                function: stdlib::io::print,
+            }),
+        },
+    );
+}
+
 fn main() {
     let script = get_script();
     let expr_result = parse::parse(&script);
@@ -41,6 +54,7 @@ fn main() {
     println!("{:?}", &expr);
 
     let mut environment = Environment::new();
+    insert_stdlib(&mut environment);
     let eval_result = eval::eval(&expr, &mut environment);
     match eval_result {
         Ok(value) => {

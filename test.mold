@@ -22,4 +22,4 @@ a = 3
 b = 6
 
 // Call rust function with mold
-square(sqrt(a + b)) // Prints "3"
+print(square(sqrt(a + b))) // Prints "3"

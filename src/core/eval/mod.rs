@@ -79,9 +79,9 @@ pub type Types<'a> = HashMap<TypeID, TypeContent<'a>>;
 
 #[derive(Clone)]
 pub struct Environment<'a> {
-    variables: Variables<'a>,
-    types: Types<'a>,
-    rust_functions: RustFunctions,
+    pub variables: Variables<'a>,
+    pub types: Types<'a>,
+    pub rust_functions: RustFunctions,
 }
 
 impl<'a> Environment<'a> {
@@ -293,13 +293,16 @@ fn eval_rust_function_call<'a>(
         arg_values.push(eval(arg_expr, environment)?);
     }
 
-    if arg_values.len() == 0 {
-        Ok(rust::external_eval_0(&function_definition.extern_function))
-    } else if arg_values.len() == 1 {
-        Ok(rust::external_eval_1(
-            &function_definition.extern_function,
-            arg_values[0].clone(),
-        ))
+    if arg_values.len() == 1 {
+        match function_definition.native_function {
+            rust::NativeFunction::Dynamic(dynamic_function) => Ok(rust::external_eval_1(
+                &dynamic_function,
+                arg_values[0].clone(),
+            )),
+            rust::NativeFunction::Static1(static_function) => {
+                Ok((static_function.function)(arg_values[0].clone()))
+            }
+        }
     } else {
         Err(make_eval_error(
             expr,
@@ -357,12 +360,12 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
             }
             Statement::RustFunctionDefinition(function_definition) => {
                 match rust::compile_function(function_definition) {
-                    Ok(extern_function) => {
+                    Ok(native_function) => {
                         environment.rust_functions.insert(
                             function_definition.signature.name.clone(),
                             types::RustFunction {
                                 args: function_definition.signature.args.clone(),
-                                extern_function: extern_function,
+                                native_function: native_function,
                             },
                         );
                         eval(rest, environment)

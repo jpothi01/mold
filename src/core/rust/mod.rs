@@ -1,10 +1,9 @@
-use super::eval;
 use super::parse::ast;
 use super::Value;
+use std::fmt;
+use std::fmt::Debug;
 use std::fmt::Write;
-use std::io;
 use std::process::Command;
-use std::process::Output;
 
 const GENERATED_SOURCE_PRELUDE: &'static str = "extern crate mold;";
 
@@ -29,32 +28,44 @@ fn rust_signature(signature: &ast::FunctionSignature) -> String {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct ExternFunction {
+pub struct DynamicNativeFunction {
     pub dylib_path: std::path::PathBuf,
     pub symbol_name: String,
 }
 
-pub fn external_eval_0<'a>(function: &ExternFunction) -> eval::Value<'a> {
-    use dylib::DynamicLibrary;
+pub struct StaticNativeFunction1 {
+    pub function: fn(Value) -> Value,
+}
 
-    DynamicLibrary::prepend_search_path(std::path::Path::new(
-        "/Users/john/code/mold/target/debug/deps",
-    ));
-    match DynamicLibrary::open(Some(&function.dylib_path)) {
-        Err(e) => panic!("Error opening dylib: {}", e),
-        Ok(lib) => {
-            let func: fn() -> Value<'a> = unsafe {
-                match lib.symbol::<u8>(function.symbol_name.as_str()) {
-                    Err(e) => panic!("Could not find symbol: {}", e),
-                    Ok(f) => std::mem::transmute(f),
-                }
-            };
-            func()
+// Unfortunately, this stuff needs to be manual:
+// https://github.com/rust-lang/rust/issues/54508
+impl Debug for StaticNativeFunction1 {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "StaticNativeFunction1(0x{:x})", self.function as usize)
+    }
+}
+
+impl PartialEq for StaticNativeFunction1 {
+    fn eq(&self, rhs: &Self) -> bool {
+        self.function as usize == rhs.function as usize
+    }
+}
+
+impl Clone for StaticNativeFunction1 {
+    fn clone(&self) -> Self {
+        StaticNativeFunction1 {
+            function: self.function.clone(),
         }
     }
 }
 
-pub fn external_eval_1<'a>(function: &ExternFunction, arg1: Value<'a>) -> Value<'a> {
+#[derive(Debug, PartialEq, Clone)]
+pub enum NativeFunction {
+    Dynamic(DynamicNativeFunction),
+    Static1(StaticNativeFunction1),
+}
+
+pub fn external_eval_1<'a>(function: &DynamicNativeFunction, arg1: Value<'a>) -> Value<'a> {
     use dylib::DynamicLibrary;
 
     DynamicLibrary::prepend_search_path(std::path::Path::new(
@@ -89,7 +100,7 @@ pub struct ExternCompileError {
 
 pub fn compile_function(
     f: &ast::RustFunctionDefinition,
-) -> Result<ExternFunction, ExternCompileError> {
+) -> Result<NativeFunction, ExternCompileError> {
     let source = generate_rust_source(f);
 
     println!("Compiling function:\n {}", source);
@@ -126,10 +137,10 @@ pub fn compile_function(
                 });
             }
 
-            Ok(ExternFunction {
+            Ok(NativeFunction::Dynamic(DynamicNativeFunction {
                 dylib_path: dylib_path,
                 symbol_name: f.signature.name.clone(),
-            })
+            }))
         }
         Err(e) => {
             eprintln!("{}", e);
