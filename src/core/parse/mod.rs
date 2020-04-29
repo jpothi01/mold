@@ -342,7 +342,6 @@ fn parse_function_call_args(parser_state: &mut ParserState) -> Result<Vec<Expr>,
         }
         parser_state.consume_until_nonwhitespace();
         args.push(parse_expr(parser_state)?);
-        debug_println!("ARGS: {:?}", args.last());
         parser_state.consume_until_nonwhitespace();
     }
 

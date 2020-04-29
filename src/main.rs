@@ -40,6 +40,16 @@ fn insert_stdlib(environment: &mut Environment) {
             }),
         },
     );
+
+    environment.rust_functions.insert(
+        parse::ast::Identifier::from("read_to_string"),
+        mold::RustFunction {
+            args: vec![parse::ast::Identifier::from("file_path")],
+            native_function: rust::NativeFunction::Static1(rust::StaticNativeFunction1 {
+                function: stdlib::io::read_to_string,
+            }),
+        },
+    );
 }
 
 fn main() {
