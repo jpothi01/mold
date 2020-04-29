@@ -163,7 +163,7 @@ impl fmt::Debug for Expr {
             Expr::BinOp { op, lhs, rhs } => write!(f, "({:?} {:?} {:?})", op, lhs, rhs),
             Expr::Unit => write!(f, "()"),
             Expr::Number(n) => write!(f, "({:?})", n),
-            Expr::String(s) => write!(f, "({:?}", s),
+            Expr::String(s) => write!(f, "({:?})", s),
             Expr::Bool(b) => write!(f, "({})", if *b { "true" } else { "false" }),
             Expr::Ident(i) => write!(f, "(id {:?})", i),
             Expr::Statement(statement, rest) => {

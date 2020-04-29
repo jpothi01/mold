@@ -320,7 +320,7 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
         Expr::Bool(b) => Ok(Value::Bool(types::Bool { value: *b })),
         Expr::Ident(id) => {
             if environment.variables.contains_key(id.as_str()) {
-                eval(environment.variables[id].expr, environment)
+                Ok(environment.variables[id].value.clone())
             } else {
                 Err(make_eval_error(
                     expr,

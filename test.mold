@@ -1,25 +1,3 @@
-rust fn sqrt(s) {
-    // This is a rust function, compiled by rustc
-    match s {
-        mold::Value::Number(n) => {
-            mold::Value::Number(mold::Number::from(n.value.sqrt()))
-        }
-        _ => panic!("Expected a mold::Number")
-    }
-}
-
-rust fn square(s) {
-    // This is a rust function, compiled by rustc
-    match s {
-        mold::Value::Number(n) => {
-            mold::Value::Number(mold::Number::from(n.value * n.value))
-        }
-        _ => panic!("Expected a mold::Number")
-    }
-}
-
-a = 3
-b = 6
-
-// Call rust function with mold
-print(square(sqrt(a + b))) // Prints "3"
+a = print("Hello")
+a = print("World")
+print(a)

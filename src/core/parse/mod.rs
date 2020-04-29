@@ -306,7 +306,6 @@ fn parse_assignment(parser_state: &mut ParserState, lhs: AssignmentLHS) -> Parse
     } else {
         Expr::Unit
     };
-
     Ok(Expr::Statement(
         Statement::Assignment {
             lhs: lhs,
@@ -343,6 +342,7 @@ fn parse_function_call_args(parser_state: &mut ParserState) -> Result<Vec<Expr>,
         }
         parser_state.consume_until_nonwhitespace();
         args.push(parse_expr(parser_state)?);
+        debug_println!("ARGS: {:?}", args.last());
         parser_state.consume_until_nonwhitespace();
     }
 
