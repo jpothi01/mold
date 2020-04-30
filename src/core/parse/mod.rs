@@ -2,6 +2,7 @@ pub mod ast;
 
 use ast::AssignmentLHS;
 use ast::Expr;
+use ast::FunctionCall;
 use ast::FunctionDefinition;
 use ast::FunctionSignature;
 use ast::Identifier;
@@ -441,10 +442,10 @@ fn parse_primary(parser_state: &mut ParserState) -> ParseResult {
         match next_character_to_inspect {
             Some('(') => {
                 let function_call_args = parse_function_call_args(parser_state)?;
-                return Ok(Expr::FunctionCall {
+                return Ok(Expr::FunctionCall(FunctionCall {
                     name: identifier,
                     args: function_call_args,
-                });
+                }));
             }
             _ => return Ok(Expr::Ident(identifier)),
         }
@@ -881,10 +882,10 @@ mod tests {
     fn parse_function_call() {
         assert_eq!(
             parse("a(1, 2)"),
-            Ok(Expr::FunctionCall {
+            Ok(Expr::FunctionCall(FunctionCall {
                 name: Identifier::from("a"),
                 args: vec!(Expr::Number(1f64), Expr::Number(2f64),)
-            })
+            }))
         );
     }
 
@@ -892,7 +893,7 @@ mod tests {
     fn parse_function_call_with_complex_expression() {
         assert_eq!(
             parse("a(1+2, (3 + 4) + 5)"),
-            Ok(Expr::FunctionCall {
+            Ok(Expr::FunctionCall(FunctionCall {
                 name: Identifier::from("a"),
                 args: vec!(
                     Expr::BinOp {
@@ -910,7 +911,7 @@ mod tests {
                         rhs: Box::new(Expr::Number(5f64)),
                     }
                 )
-            })
+            }))
         );
     }
 
@@ -937,10 +938,10 @@ mod tests {
                         rhs: Box::new(Expr::Number(1f64))
                     })
                 }),
-                Box::new(Expr::FunctionCall {
+                Box::new(Expr::FunctionCall(FunctionCall {
                     name: Identifier::from("f"),
                     args: vec!(Expr::Number(1f64))
-                })
+                }))
             ))
         );
     }
@@ -1134,10 +1135,10 @@ print()"#
 "#
                     )
                 }),
-                Box::new(Expr::FunctionCall {
+                Box::new(Expr::FunctionCall(FunctionCall {
                     name: Identifier::from("print"),
                     args: vec!()
-                })
+                }))
             ))
         )
     }

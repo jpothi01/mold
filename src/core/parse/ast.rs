@@ -105,6 +105,22 @@ impl fmt::Debug for IfElse {
 }
 
 #[derive(PartialEq, Clone)]
+pub struct FunctionCall {
+    pub name: Identifier,
+    pub args: Vec<Expr>,
+}
+
+impl fmt::Debug for FunctionCall {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "(call {:?}", self.name)?;
+        for arg in &self.args {
+            write!(f, " {:?}", arg)?;
+        }
+        write!(f, ")")
+    }
+}
+
+#[derive(PartialEq, Clone)]
 pub enum Statement {
     Assignment {
         lhs: AssignmentLHS,
@@ -132,10 +148,7 @@ pub enum Expr {
     Bool(bool),
     Ident(Identifier),
     Statement(Statement, Box<Expr>),
-    FunctionCall {
-        name: Identifier,
-        args: Vec<Expr>,
-    },
+    FunctionCall(FunctionCall),
     MethodCall {
         name: Identifier,
         target: Box<Expr>,
@@ -187,13 +200,7 @@ impl fmt::Debug for Expr {
 
                 write!(f, " {:?}", rest)
             }
-            Expr::FunctionCall { name, args } => {
-                write!(f, "(call {:?}", name)?;
-                for arg in args {
-                    write!(f, " {:?}", arg)?;
-                }
-                write!(f, ")")
-            }
+            Expr::FunctionCall(function_call) => write!(f, "{:?}", function_call),
             Expr::MethodCall { name, target, args } => {
                 write!(f, "(methodcall {:?}", name)?;
                 write!(f, " {:?}", target)?;

@@ -2,6 +2,7 @@ pub mod types;
 
 use super::parse::ast::AssignmentLHS;
 use super::parse::ast::Expr;
+use super::parse::ast::FunctionCall;
 use super::parse::ast::FunctionDefinition;
 use super::parse::ast::Identifier;
 use super::parse::ast::Op;
@@ -417,7 +418,8 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
             }
             Statement::IfElse(ifelse) => panic!(),
         },
-        Expr::FunctionCall { name, args } => {
+        Expr::FunctionCall(function_call) => {
+            let FunctionCall { name, args } = function_call;
             if environment.variables.contains_key(name.as_str()) {
                 eval_function_call(expr, name.as_str(), args, environment)
             } else if environment.rust_functions.contains_key(name.as_str()) {
