@@ -451,11 +451,8 @@ fn parse_primary(parser_state: &mut ParserState) -> ParseResult {
     if next_character.is_alphabetic() {
         let identifier = parse_identifier(parser_state)?;
 
-        let next_character_to_inspect = parser_state
-            .remaining_input
-            .chars()
-            .find(|&c| c == '\n' || !c.is_whitespace());
-        match next_character_to_inspect {
+        parser_state.consume_until_nonwhitespace_or_newline();
+        match parser_state.next_character() {
             Some('(') => {
                 let function_call_args = parse_function_call_args(parser_state)?;
                 return Ok(Expr::FunctionCall(FunctionCall {
