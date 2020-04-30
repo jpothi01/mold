@@ -126,6 +126,7 @@ pub enum Statement {
         lhs: AssignmentLHS,
         rhs: Box<Expr>,
     },
+    FunctionCall(FunctionCall),
     FunctionDefinition(FunctionDefinition),
     RustFunctionDefinition(RustFunctionDefinition),
     Impl {
@@ -182,6 +183,7 @@ impl fmt::Debug for Expr {
             Expr::Statement(statement, rest) => {
                 match statement {
                     Statement::Assignment { lhs, rhs } => write!(f, "(assign {:?} {:?})", lhs, rhs),
+                    Statement::FunctionCall(function_call) => write!(f, "{:?}", function_call),
                     Statement::FunctionDefinition(function_definition) => {
                         write!(f, "{:?}", function_definition)
                     }

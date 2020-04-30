@@ -353,6 +353,7 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
                     eval(rest, environment)
                 }
             },
+            Statement::FunctionCall(function_call) => panic!("Not implemented"),
             Statement::FunctionDefinition(function_definition) => {
                 let variable_content = VariableContent {
                     expr: &*function_definition.body,

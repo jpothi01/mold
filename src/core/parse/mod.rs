@@ -41,17 +41,23 @@ impl<'a> ParserState<'a> {
     fn consume_n_characters(&mut self, n: usize) {
         self.remaining_input = &self.remaining_input[n..]
     }
-    fn consume_until_nonwhitespace(&mut self) {
+    fn consume_until<P: Fn(char) -> bool>(&mut self, predicate: P) {
         while let Some(c) = self.next_character() {
             if self.remaining_input.starts_with("//") {
                 self.consume_line_comment();
             }
-            if c.is_whitespace() {
+            if !predicate(c) {
                 self.consume_character();
             } else {
                 break;
             }
         }
+    }
+    fn consume_until_nonwhitespace_or_newline(&mut self) {
+        self.consume_until(|c| c == '\n' || !c.is_whitespace())
+    }
+    fn consume_until_nonwhitespace(&mut self) {
+        self.consume_until(|c| !c.is_whitespace())
     }
     fn expect_character_and_consume(&mut self, character: char) -> Result<(), ParseError> {
         if let Some(c) = self.next_character() {
@@ -387,6 +393,16 @@ fn parse_method_call(parser_state: &mut ParserState, target: Expr) -> ParseResul
     });
 }
 
+fn parse_expr_as_statement(parser_state: &mut ParserState, primary_expr: Expr) -> ParseResult {
+    match primary_expr {
+        Expr::FunctionCall(function_call) => Ok(Expr::Statement(
+            Statement::FunctionCall(function_call),
+            Box::new(parse_expr(parser_state)?),
+        )),
+        _ => Ok(primary_expr), // Sometimes, this is wrong, but the error will be caught later
+    }
+}
+
 fn parse_bool_literal(parser_state: &mut ParserState) -> ParseResult {
     if starts_with_keyword(parser_state.remaining_input, keywords::TRUE) {
         parser_state.consume_n_characters(keywords::TRUE.len());
@@ -672,39 +688,41 @@ fn parse_expr(parser_state: &mut ParserState) -> ParseResult {
 
     let primary = parse_primary(parser_state)?;
 
-    parser_state.consume_until_nonwhitespace();
+    parser_state.consume_until_nonwhitespace_or_newline();
     let maybe_next_character = parser_state.next_character();
-    if maybe_next_character.is_some() {
-        let next_character = maybe_next_character.unwrap();
-        if Op::is_first_char_of_binop(next_character) {
-            parse_binop_rhs(parser_state, primary, -1)
-        } else if is_expression_terminator(next_character) {
-            Ok(primary)
-        } else if next_character == '=' {
-            // TODO: don't parse assignment lhs from primary expression, since this is a hack
-            match primary {
-                Expr::Ident(identifier) => {
-                    parse_assignment(parser_state, AssignmentLHS::Single(identifier))
-                }
-                _ => Err(make_parse_error(
-                    parser_state,
-                    "Left-hand side of assignment must be a variable name",
-                )),
-            }
-        } else if next_character == '.' {
-            parse_method_call(parser_state, primary)
-        } else {
-            Err(make_parse_error(
-                parser_state,
-                format!(
-                    "Expected a binary operator, '=', or end of expression, but found {}",
-                    next_character
-                )
-                .as_str(),
-            ))
-        }
-    } else {
+    if maybe_next_character.is_none() {
+        return Ok(primary);
+    }
+
+    let next_character = maybe_next_character.unwrap();
+    if Op::is_first_char_of_binop(next_character) {
+        parse_binop_rhs(parser_state, primary, -1)
+    } else if is_expression_terminator(next_character) {
         Ok(primary)
+    } else if next_character == '=' {
+        // TODO: don't parse assignment lhs from primary expression, since this is a hack
+        match primary {
+            Expr::Ident(identifier) => {
+                parse_assignment(parser_state, AssignmentLHS::Single(identifier))
+            }
+            _ => Err(make_parse_error(
+                parser_state,
+                "Left-hand side of assignment must be a variable name",
+            )),
+        }
+    } else if next_character == '.' {
+        parse_method_call(parser_state, primary)
+    } else if next_character == '\n' {
+        parse_expr_as_statement(parser_state, primary)
+    } else {
+        Err(make_parse_error(
+            parser_state,
+            format!(
+                "Expected a binary operator, '=', or end of expression, but found {}",
+                next_character
+            )
+            .as_str(),
+        ))
     }
 }
 
@@ -912,6 +930,20 @@ mod tests {
                     }
                 )
             }))
+        );
+    }
+
+    #[test]
+    fn parse_function_call_statement() {
+        assert_eq!(
+            parse("a(1, 2)\n2"),
+            Ok(Expr::Statement(
+                Statement::FunctionCall(FunctionCall {
+                    name: Identifier::from("a"),
+                    args: vec!(Expr::Number(1f64), Expr::Number(2f64),)
+                }),
+                Box::new(Expr::Number(2f64))
+            ))
         );
     }
 

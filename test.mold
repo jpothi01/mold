@@ -1,3 +1,2 @@
-a = 1
-b = a
-print(b)
+print(1)
+print(2)
