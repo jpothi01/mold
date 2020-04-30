@@ -219,14 +219,13 @@ fn eval_op<'a>(
     }
 }
 
-fn eval_function_call<'a>(
+fn eval_mold_function_call<'a>(
     expr: &'a Expr,
-    name: &'a str,
-    args: &'a Vec<Expr>,
+    function_call: &'a FunctionCall,
     environment: &mut Environment<'a>,
 ) -> EvalResult<'a> {
-    let function_definition = &environment.variables[name];
-    let call_args = args;
+    let function_definition = &environment.variables[&function_call.name];
+    let call_args = &function_call.args;
     match function_definition.value.clone() {
         Value::Function(function) => {
             let def_args = function.args;
@@ -267,12 +266,11 @@ fn eval_function_call<'a>(
 
 fn eval_rust_function_call<'a>(
     expr: &'a Expr,
-    name: &'a str,
-    args: &'a Vec<Expr>,
+    function_call: &'a FunctionCall,
     environment: &mut Environment<'a>,
 ) -> EvalResult<'a> {
-    let function_definition = environment.rust_functions[name].clone();
-    let call_args = args;
+    let function_definition = environment.rust_functions[&function_call.name].clone();
+    let call_args = &function_call.args;
     let def_args = function_definition.args.clone();
     if call_args.len() != def_args.len() {
         return Err(make_eval_error(
@@ -320,6 +318,24 @@ fn eval_rust_function_call<'a>(
     }
 }
 
+fn eval_function_call<'a>(
+    expr: &'a Expr,
+    function_call: &'a FunctionCall,
+    environment: &mut Environment<'a>,
+) -> EvalResult<'a> {
+    let FunctionCall { name, args } = function_call;
+    if environment.variables.contains_key(name.as_str()) {
+        eval_mold_function_call(expr, function_call, environment)
+    } else if environment.rust_functions.contains_key(name.as_str()) {
+        eval_rust_function_call(expr, function_call, environment)
+    } else {
+        Err(make_eval_error(
+            expr,
+            format!("Undefined function {}", name).as_str(),
+        ))
+    }
+}
+
 pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult<'a> {
     match expr {
         Expr::BinOp { op, lhs, rhs } => eval_op(op, lhs, rhs, environment),
@@ -353,7 +369,11 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
                     eval(rest, environment)
                 }
             },
-            Statement::FunctionCall(function_call) => panic!("Not implemented"),
+            Statement::FunctionCall(function_call) => {
+                // Note we're throwing away the result here.
+                eval_function_call(expr, function_call, environment)?;
+                eval(rest, environment)
+            }
             Statement::FunctionDefinition(function_definition) => {
                 let variable_content = VariableContent {
                     expr: &*function_definition.body,
@@ -419,19 +439,7 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
             }
             Statement::IfElse(ifelse) => panic!(),
         },
-        Expr::FunctionCall(function_call) => {
-            let FunctionCall { name, args } = function_call;
-            if environment.variables.contains_key(name.as_str()) {
-                eval_function_call(expr, name.as_str(), args, environment)
-            } else if environment.rust_functions.contains_key(name.as_str()) {
-                eval_rust_function_call(expr, name.as_str(), args, environment)
-            } else {
-                Err(make_eval_error(
-                    expr,
-                    format!("Undefined function {}", name).as_str(),
-                ))
-            }
-        }
+        Expr::FunctionCall(function_call) => eval_function_call(expr, function_call, environment),
         Expr::MethodCall { name, target, args } => {
             let target_value = eval(target, environment)?;
             let target_type = target_value.type_id();
