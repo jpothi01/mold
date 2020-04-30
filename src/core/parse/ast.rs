@@ -168,9 +168,7 @@ impl fmt::Debug for Expr {
             Expr::Ident(i) => write!(f, "(id {:?})", i),
             Expr::Statement(statement, rest) => {
                 match statement {
-                    Statement::Assignment { lhs, rhs } => {
-                        write!(f, "(assign {:?} {:?} {:?})", lhs, rhs, rest)
-                    }
+                    Statement::Assignment { lhs, rhs } => write!(f, "(assign {:?} {:?})", lhs, rhs),
                     Statement::FunctionDefinition(function_definition) => {
                         write!(f, "{:?}", function_definition)
                     }

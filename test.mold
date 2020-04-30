@@ -1,1 +1,3 @@
-write("/Users/john/code/mold/babys_first_write.txt", "Please work")
+a = 1
+b = a
+print(b)

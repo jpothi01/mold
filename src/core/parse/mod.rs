@@ -433,9 +433,12 @@ fn parse_primary(parser_state: &mut ParserState) -> ParseResult {
 
     if next_character.is_alphabetic() {
         let identifier = parse_identifier(parser_state)?;
-        parser_state.consume_until_nonwhitespace();
-        let maybe_next_character = parser_state.next_character();
-        match maybe_next_character {
+
+        let next_character_to_inspect = parser_state
+            .remaining_input
+            .chars()
+            .find(|&c| c == '\n' || !c.is_whitespace());
+        match next_character_to_inspect {
             Some('(') => {
                 let function_call_args = parse_function_call_args(parser_state)?;
                 return Ok(Expr::FunctionCall {
@@ -789,6 +792,26 @@ mod tests {
                 Box::new(Expr::Unit)
             ))
         )
+    }
+
+    #[test]
+    fn parse_cascading_assignments() {
+        assert_eq!(
+            parse("a = 1\nb = a\nb"),
+            Ok(Expr::Statement(
+                Statement::Assignment {
+                    lhs: AssignmentLHS::Single(Identifier::from("a")),
+                    rhs: Box::new(Expr::Number(1f64))
+                },
+                Box::new(Expr::Statement(
+                    Statement::Assignment {
+                        lhs: AssignmentLHS::Single(Identifier::from("b")),
+                        rhs: Box::new(Expr::Ident(Identifier::from("a")))
+                    },
+                    Box::new(Expr::Ident(Identifier::from("b")))
+                ))
+            ))
+        );
     }
 
     #[test]
