@@ -421,6 +421,7 @@ fn parse_block(parser_state: &mut ParserState) -> ParseResult {
     debug_assert!(parser_state.next_character() == Some('{'));
     parser_state.consume_character();
     let expr = parse_expr(parser_state)?;
+    parser_state.consume_until_nonwhitespace();
     parser_state.expect_character_and_consume('}')?;
     Ok(Expr::Block(Box::new(expr)))
 }

@@ -1,3 +1,4 @@
-while true {
+print({
     print("BOOBS")
-}
+    "ARE GOOD"
+})
