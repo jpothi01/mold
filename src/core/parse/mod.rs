@@ -638,10 +638,7 @@ fn parse_if_else(parser_state: &mut ParserState) -> ParseResult {
     parser_state.consume_until_nonwhitespace();
     let condition = parse_expr(parser_state)?;
     parser_state.consume_until_nonwhitespace();
-    parser_state.expect_character_and_consume('{')?;
-    let if_branch = parse_expr(parser_state)?;
-    parser_state.consume_until_nonwhitespace();
-    parser_state.expect_character_and_consume('}')?;
+    let if_branch = parse_block(parser_state)?;
     parser_state.consume_until_nonwhitespace();
 
     if !starts_with_keyword(parser_state.remaining_input, keywords::ELSE) {
@@ -657,11 +654,7 @@ fn parse_if_else(parser_state: &mut ParserState) -> ParseResult {
     let error_message = || format!("Expected keyword '{}' or '{{'", keywords::IF);
     let else_branch: ParseResult = if parser_state.next_character() == Some('{') {
         // Not "if else"
-        parser_state.consume_character();
-        let expr = parse_expr(parser_state)?;
-        parser_state.consume_until_nonwhitespace();
-        parser_state.expect_character_and_consume('}')?;
-        Ok(expr)
+        parse_block(parser_state)
     } else {
         if !starts_with_keyword(parser_state.remaining_input, keywords::IF) {
             Err(make_parse_error(parser_state, error_message().as_str()))
@@ -1084,8 +1077,8 @@ mod tests {
             parse("if x { 1 } else { 2 }"),
             Ok(Expr::IfElse(IfElse {
                 condition: Box::new(Expr::Ident(Identifier::from("x"))),
-                if_branch: Box::new(Expr::Number(1f64)),
-                else_branch: Box::new(Expr::Number(2f64)),
+                if_branch: Box::new(Expr::Block(Box::new(Expr::Number(1f64)))),
+                else_branch: Box::new(Expr::Block(Box::new(Expr::Number(2f64)))),
             }))
         )
     }
@@ -1096,11 +1089,11 @@ mod tests {
             parse("if x { 1 } else if true { 2 } else { false }"),
             Ok(Expr::IfElse(IfElse {
                 condition: Box::new(Expr::Ident(Identifier::from("x"))),
-                if_branch: Box::new(Expr::Number(1f64)),
+                if_branch: Box::new(Expr::Block(Box::new(Expr::Number(1f64)))),
                 else_branch: Box::new(Expr::IfElse(IfElse {
                     condition: Box::new(Expr::Bool(true)),
-                    if_branch: Box::new(Expr::Number(2f64)),
-                    else_branch: Box::new(Expr::Bool(false)),
+                    if_branch: Box::new(Expr::Block(Box::new(Expr::Number(2f64)))),
+                    else_branch: Box::new(Expr::Block(Box::new(Expr::Bool(false)))),
                 })),
             }))
         )

@@ -1,4 +1,6 @@
-print({
-    print("BOOBS")
-    "ARE GOOD"
-})
+b = 1
+a = {
+    b = 2
+    b
+}
+a + b
