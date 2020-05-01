@@ -549,6 +549,7 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::core::parse::ast::FunctionSignature;
     use crate::core::parse::ast::IfElse;
 
     #[test]
@@ -589,6 +590,29 @@ mod test {
             ),
             Ok(Value::Number(types::Number { value: 1f64 }))
         );
+    }
+
+    #[test]
+    fn function_definition_then_call() {
+        assert_eq!(
+            eval(
+                &Expr::Statement(
+                    Statement::FunctionDefinition(FunctionDefinition {
+                        signature: FunctionSignature {
+                            name: Identifier::from("f"),
+                            args: vec!(Identifier::from("x")),
+                        },
+                        body: Box::new(Expr::Block(Box::new(Expr::Ident(Identifier::from("x")))))
+                    }),
+                    Box::new(Expr::FunctionCall(FunctionCall {
+                        name: Identifier::from("f"),
+                        args: vec!(Expr::Number(10f64))
+                    }))
+                ),
+                &mut Environment::new()
+            ),
+            Ok(Value::Number(types::Number::from(10f64)))
+        )
     }
 
     // #[test]

@@ -7,3 +7,4 @@
 
 ** TODO Unit literal
 ** TODO statements should be disallowed except at the top level of block expressions
+** TODO environment is cloned twice when calling functions, once at callsite and once in the body for the block expression
