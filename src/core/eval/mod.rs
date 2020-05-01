@@ -539,6 +539,10 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
                 _ => Err(make_eval_error(expr, "Expected expression returning Bool")),
             }
         }
+        Expr::Block(block_expr) => {
+            let mut block_environment = environment.clone();
+            eval(block_expr, &mut block_environment)
+        }
     }
 }
 

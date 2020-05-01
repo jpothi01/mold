@@ -156,6 +156,7 @@ pub enum Expr {
         args: Vec<Expr>,
     },
     IfElse(IfElse),
+    Block(Box<Expr>),
 }
 
 #[derive(PartialEq, Clone)]
@@ -212,6 +213,7 @@ impl fmt::Debug for Expr {
                 write!(f, ")")
             }
             Expr::IfElse(ifelse) => write!(f, "{:?}", ifelse),
+            Expr::Block(expr) => write!(f, "(block {:?})", expr),
         }
     }
 }

@@ -6,3 +6,4 @@
 ** TODO evaluation errors should not panic, they should return EvalError...maybe?
 
 ** TODO Unit literal
+** TODO statements should be disallowed except at the top level of block expressions

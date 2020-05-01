@@ -417,6 +417,14 @@ fn parse_bool_literal(parser_state: &mut ParserState) -> ParseResult {
     Ok(Expr::Bool(false))
 }
 
+fn parse_block(parser_state: &mut ParserState) -> ParseResult {
+    debug_assert!(parser_state.next_character() == Some('{'));
+    parser_state.consume_character();
+    let expr = parse_expr(parser_state)?;
+    parser_state.expect_character_and_consume('}')?;
+    Ok(Expr::Block(Box::new(expr)))
+}
+
 fn parse_primary(parser_state: &mut ParserState) -> ParseResult {
     // Base case: We parse the rhs of a binary or unary operation
     // Recursive case: We need to parse the rhs of a binary operation
@@ -446,6 +454,10 @@ fn parse_primary(parser_state: &mut ParserState) -> ParseResult {
 
     if next_character == '"' {
         return parse_string_literal(parser_state);
+    }
+
+    if next_character == '{' {
+        return parse_block(parser_state);
     }
 
     if next_character.is_alphabetic() {
@@ -1170,5 +1182,17 @@ print()"#
                 }))
             ))
         )
+    }
+
+    #[test]
+    fn parse_block() {
+        assert_eq!(
+            parse("{ a + b }"),
+            Ok(Expr::Block(Box::new(Expr::BinOp {
+                op: Op::Plus,
+                lhs: Box::new(Expr::Ident(Identifier::from("a"))),
+                rhs: Box::new(Expr::Ident(Identifier::from("b"))),
+            })))
+        );
     }
 }
