@@ -418,7 +418,13 @@ fn parse_bool_literal(parser_state: &mut ParserState) -> ParseResult {
 }
 
 fn parse_block(parser_state: &mut ParserState) -> ParseResult {
-    debug_assert!(parser_state.next_character() == Some('{'));
+    parser_state.consume_until_nonwhitespace();
+    if parser_state.next_character() != Some('{') {
+        return Err(make_parse_error(
+            parser_state,
+            "Expected '{' at beginning of block.",
+        ));
+    }
     parser_state.consume_character();
     let expr = parse_expr(parser_state)?;
     parser_state.consume_until_nonwhitespace();
@@ -508,7 +514,7 @@ fn parse_function_signature(
 fn parse_function_definition(
     parser_state: &mut ParserState,
 ) -> Result<FunctionDefinition, ParseError> {
-    debug_println!("parser_function_definition: {:?}", parser_state);
+    debug_println!("parse_function_definition: {:?}", parser_state);
 
     debug_assert!(starts_with_keyword(
         parser_state.remaining_input,
@@ -517,13 +523,8 @@ fn parse_function_definition(
     parser_state.consume_n_characters(keywords::FUNCTION.len());
     parser_state.consume_until_nonwhitespace();
     let signature = parse_function_signature(parser_state)?;
-    parser_state.consume_until_nonwhitespace();
-    parser_state.expect_character_and_consume('{')?;
 
-    let body = parse_expr(parser_state)?;
-    parser_state.consume_until_nonwhitespace();
-    parser_state.expect_character_and_consume('}')?;
-    parser_state.consume_until_nonwhitespace();
+    let body = parse_block(parser_state)?;
 
     Ok(FunctionDefinition {
         signature: signature,
@@ -859,11 +860,11 @@ mod tests {
                         name: Identifier::from("f"),
                         args: vec!(Identifier::from("a"), Identifier::from("b")),
                     },
-                    body: Box::new(Expr::BinOp {
+                    body: Box::new(Expr::Block(Box::new(Expr::BinOp {
                         op: Op::Plus,
                         lhs: Box::new(Expr::Ident(Identifier::from("a"))),
                         rhs: Box::new(Expr::Ident(Identifier::from("b"))),
-                    })
+                    })))
                 }),
                 Box::new(Expr::Unit)
             ))
@@ -890,7 +891,7 @@ mod tests {
                         name: Identifier::from("f"),
                         args: vec!(Identifier::from("a")),
                     },
-                    body: Box::new(Expr::Ident(Identifier::from("a")))
+                    body: Box::new(Expr::Block(Box::new(Expr::Ident(Identifier::from("a")))))
                 }),
                 Box::new(Expr::Statement(
                     Statement::FunctionDefinition(FunctionDefinition {
@@ -898,7 +899,7 @@ mod tests {
                             name: Identifier::from("g"),
                             args: vec!(Identifier::from("b")),
                         },
-                        body: Box::new(Expr::Ident(Identifier::from("b")))
+                        body: Box::new(Expr::Block(Box::new(Expr::Ident(Identifier::from("b")))))
                     }),
                     Box::new(Expr::Unit)
                 ))
@@ -974,11 +975,11 @@ mod tests {
                         name: Identifier::from("f"),
                         args: vec!(Identifier::from("x")),
                     },
-                    body: Box::new(Expr::BinOp {
+                    body: Box::new(Expr::Block(Box::new(Expr::BinOp {
                         op: Op::Plus,
                         lhs: Box::new(Expr::Ident(Identifier::from("x"))),
                         rhs: Box::new(Expr::Number(1f64))
-                    })
+                    })))
                 }),
                 Box::new(Expr::FunctionCall(FunctionCall {
                     name: Identifier::from("f"),
@@ -1037,14 +1038,14 @@ mod tests {
                                 name: Identifier::from("len"),
                                 args: vec!(Identifier::from("self")),
                             },
-                            body: Box::new(Expr::Number(2f64))
+                            body: Box::new(Expr::Block(Box::new(Expr::Number(2f64))))
                         },
                         FunctionDefinition {
                             signature: FunctionSignature {
                                 name: Identifier::from("g"),
                                 args: Vec::new(),
                             },
-                            body: Box::new(Expr::Number(3f64))
+                            body: Box::new(Expr::Block(Box::new(Expr::Number(3f64))))
                         }
                     )
                 },
