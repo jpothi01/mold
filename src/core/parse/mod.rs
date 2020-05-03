@@ -176,7 +176,6 @@ fn make_parse_error(parser_state: &ParserState, msg: &str) -> ParseError {
 }
 
 fn parse_binop(parser_state: &mut ParserState, consume: bool) -> Option<Op> {
-    debug_println!("parse_binop: {:?}", parser_state);
     debug_assert!(parser_state.remaining_input.len() >= 1);
     if let Some(single_character_op) = Op::from_str(&parser_state.remaining_input[0..1]) {
         if consume {
@@ -207,7 +206,7 @@ fn parse_binop_rhs(
 
     let mut new_lhs = lhs;
     loop {
-        parser_state.consume_until_nonwhitespace();
+        parser_state.consume_until_nonwhitespace_or_newline();
         let maybe_next_character = parser_state.next_character();
         if maybe_next_character.is_none() {
             return Ok(new_lhs);
@@ -235,12 +234,12 @@ fn parse_binop_rhs(
         // Must delay consuming the op, because we might have chosen to not parse it in this call to
         // parse_binop_rhs.
         parse_binop(parser_state, true).unwrap();
-        parser_state.consume_until_nonwhitespace();
+        parser_state.consume_until_nonwhitespace_or_newline();
         let next_primary_expr = parse_primary(parser_state)?;
         debug_println!("next_primary_expr: {:?}", next_primary_expr);
         debug_println!("{:?}", parser_state);
 
-        parser_state.consume_until_nonwhitespace();
+        parser_state.consume_until_nonwhitespace_or_newline();
 
         let rhs = if parser_state.remaining_input.len() > 0 {
             let next_op = parse_binop(parser_state, false);
@@ -325,7 +324,7 @@ fn parse_assignment(parser_state: &mut ParserState, lhs: AssignmentLHS) -> Parse
     parser_state.consume_character();
     parser_state.consume_until_nonwhitespace();
 
-    let rhs = parse_primary(parser_state)?;
+    let rhs = parse_expr(parser_state)?;
 
     // We want to support both with newline and without newline at the
     // last statement of a Unit-returning Statement-expr.
@@ -442,6 +441,7 @@ fn parse_bool_literal(parser_state: &mut ParserState) -> ParseResult {
 }
 
 fn parse_block(parser_state: &mut ParserState) -> ParseResult {
+    debug_println!("parse_block: {:?}", parser_state);
     parser_state.consume_until_nonwhitespace();
     if parser_state.next_character() != Some('{') {
         return Err(make_parse_error(
@@ -698,6 +698,7 @@ fn parse_if_else(parser_state: &mut ParserState) -> ParseResult {
 }
 
 fn parse_while(parser_state: &mut ParserState) -> ParseResult {
+    debug_println!("parse_while: {:?}", parser_state);
     debug_assert!(starts_with_keyword(
         parser_state.remaining_input,
         keywords::WHILE
@@ -751,7 +752,6 @@ fn parse_expr(parser_state: &mut ParserState) -> ParseResult {
         return parse_while(parser_state);
     }
 
-    debug_println!("TEST: {:?}", parser_state);
     if starts_with_keyword(parser_state.remaining_input, keywords::LET) {
         // TODO: let currently is cosmetic to make typing mold code feel more natural
         // for rust users. Maybe it should be impued with variable declaration semantics as well?
