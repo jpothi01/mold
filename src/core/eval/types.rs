@@ -86,6 +86,12 @@ impl Type for Bool {
     }
 }
 
+impl From<bool> for Bool {
+    fn from(b: bool) -> Self {
+        Bool { value: b }
+    }
+}
+
 #[derive(PartialEq, Clone, Debug)]
 pub struct Number {
     pub value: f64,

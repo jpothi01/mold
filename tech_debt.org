@@ -3,3 +3,4 @@
 
 ** TODO operator code does not support multi-character operators well
 ** TODO support breaking operator expressions by newlines
+** TODO scopes are totally broken, so I had to get rid of block scopes

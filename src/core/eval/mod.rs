@@ -216,6 +216,29 @@ fn eval_op<'a>(
                 .as_str(),
             )),
         },
+        Op::LessThan => match lhs_value {
+            Value::Number(lhs_number) => match rhs_value {
+                Value::Number(rhs_number) => Ok(Value::Bool(types::Bool::from(
+                    lhs_number.value < rhs_number.value,
+                ))),
+                _ => Err(make_eval_error(
+                    rhs,
+                    format!(
+                        "Expected expression of type Number, got {}",
+                        rhs_value.type_id()
+                    )
+                    .as_str(),
+                )),
+            },
+            _ => Err(make_eval_error(
+                lhs,
+                format!(
+                    "Expected expression of type Number, got {}",
+                    lhs_value.type_id()
+                )
+                .as_str(),
+            )),
+        },
         _ => panic!(),
     }
 }
@@ -439,24 +462,26 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
                 eval(rest, environment)
             }
             Statement::IfElse(ifelse) => panic!(),
-            Statement::While { condition, body } => loop {
-                let condition_value = eval(&*condition, environment)?;
-                match condition_value {
-                    Value::Bool(b) => {
-                        if !b.value {
-                            break Ok(Value::Unit(types::Unit));
+            Statement::While { condition, body } => {
+                loop {
+                    let condition_value = eval(&*condition, environment)?;
+                    match condition_value {
+                        Value::Bool(b) => {
+                            if !b.value {
+                                break Ok(Value::Unit(types::Unit));
+                            }
+                        }
+                        _ => {
+                            break Err(make_eval_error(
+                                expr,
+                                "Condition of while loop must return Bool",
+                            ))
                         }
                     }
-                    _ => {
-                        break Err(make_eval_error(
-                            expr,
-                            "Condition of while loop must return Bool",
-                        ))
-                    }
-                }
-
-                eval(&*body, environment)?;
-            },
+                    eval(&*body, environment)?;
+                }?;
+                eval(rest, environment)
+            }
         },
         Expr::FunctionCall(function_call) => eval_function_call(expr, function_call, environment),
         Expr::MethodCall { name, target, args } => {
@@ -558,10 +583,7 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
                 _ => Err(make_eval_error(expr, "Expected expression returning Bool")),
             }
         }
-        Expr::Block(block_expr) => {
-            let mut block_environment = environment.clone();
-            eval(block_expr, &mut block_environment)
-        }
+        Expr::Block(block_expr) => eval(block_expr, environment),
     }
 }
 
