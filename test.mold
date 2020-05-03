@@ -1,9 +1,12 @@
 x = 0
-not_done = true
-while not_done {
+y = 0
+z = 0
+while x != 5 {
     x = x + 1
-    if x == 50000 {
-        not_done = false
-    } else {}
+    while y != 5 {
+        y = y + 1
+        z = z + 1
+    }
+    y = 0
 }
-print(x)
+print(z)
