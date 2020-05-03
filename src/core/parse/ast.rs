@@ -29,19 +29,6 @@ impl Op {
         }
     }
 
-    pub fn is_first_char_of_binop(c: char) -> bool {
-        match c {
-            '+' => true,
-            '&' => true,
-            '|' => true,
-            '<' => true,
-            '=' => true,
-            '!' => true,
-            '>' => true,
-            _ => false,
-        }
-    }
-
     pub fn precedence(&self) -> i32 {
         match self {
             Op::Plus => 3,
