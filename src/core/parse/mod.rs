@@ -175,24 +175,24 @@ fn make_parse_error(parser_state: &ParserState, msg: &str) -> ParseError {
     }
 }
 
-fn parse_binop(parser_state: &mut ParserState, consume: bool) -> Result<Op, ParseError> {
+fn parse_binop(parser_state: &mut ParserState, consume: bool) -> Option<Op> {
     debug_println!("parse_binop: {:?}", parser_state);
     debug_assert!(parser_state.remaining_input.len() >= 1);
     if let Some(single_character_op) = Op::from_str(&parser_state.remaining_input[0..1]) {
         if consume {
             parser_state.consume_character();
         }
-        return Ok(single_character_op);
+        return Some(single_character_op);
     }
     if parser_state.remaining_input.len() >= 2 {
         if let Some(double_character_op) = Op::from_str(&parser_state.remaining_input[0..2]) {
             if consume {
                 parser_state.consume_n_characters(2);
             }
-            return Ok(double_character_op);
+            return Some(double_character_op);
         }
     }
-    return Err(make_parse_error(parser_state, "Expected binary operator"));
+    return None;
 }
 
 // If you ever forget how the hell this works, go to the LLVM tutorial on parsing
@@ -213,8 +213,9 @@ fn parse_binop_rhs(
             return Ok(new_lhs);
         }
 
-        let next_character = maybe_next_character.unwrap();
-        if !Op::is_first_char_of_binop(next_character) {
+        let maybe_op = parse_binop(parser_state, false);
+        if maybe_op.is_none() {
+            let next_character = maybe_next_character.unwrap();
             if !is_expression_terminator(next_character) && !next_character.is_whitespace() {
                 return Err(make_parse_error(parser_state, "Expected operator."));
             }
@@ -222,7 +223,7 @@ fn parse_binop_rhs(
             return Ok(new_lhs);
         }
 
-        let op = parse_binop(parser_state, false)?;
+        let op = maybe_op.unwrap();
         let op_precedence = op.precedence();
 
         if op_precedence < minimum_precedence {
@@ -241,13 +242,14 @@ fn parse_binop_rhs(
 
         parser_state.consume_until_nonwhitespace();
 
-        let rhs = if parser_state.remaining_input.len() > 0
-            && Op::is_first_char_of_binop(parser_state.next_character().unwrap())
-        {
-            let next_op = parse_binop(parser_state, false)?;
-            let next_precedence = next_op.precedence();
-            if next_precedence > op_precedence {
-                parse_binop_rhs(parser_state, next_primary_expr, next_precedence)?
+        let rhs = if parser_state.remaining_input.len() > 0 {
+            let next_op = parse_binop(parser_state, false);
+            if next_op.is_some() && next_op.unwrap().precedence() > op_precedence {
+                parse_binop_rhs(
+                    parser_state,
+                    next_primary_expr,
+                    next_op.unwrap().precedence(),
+                )?
             } else {
                 next_primary_expr
             }
@@ -765,10 +767,12 @@ fn parse_expr(parser_state: &mut ParserState) -> ParseResult {
         return Ok(primary);
     }
 
+    if let Some(_) = parse_binop(parser_state, false) {
+        return parse_binop_rhs(parser_state, primary, -1);
+    }
+
     let next_character = maybe_next_character.unwrap();
-    if Op::is_first_char_of_binop(next_character) {
-        parse_binop_rhs(parser_state, primary, -1)
-    } else if is_expression_terminator(next_character) {
+    if is_expression_terminator(next_character) {
         Ok(primary)
     } else if next_character == '=' {
         // TODO: don't parse assignment lhs from primary expression, since this is a hack

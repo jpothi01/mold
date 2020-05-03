@@ -1,10 +1,16 @@
 use std::fmt;
 
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum Op {
     Plus,
     And,
     Or,
+    Equals,
+    NotEquals,
+    LessThan,
+    LessThanOrEqual,
+    GreaterThan,
+    GreaterThanOrEqual,
 }
 
 impl Op {
@@ -13,6 +19,12 @@ impl Op {
             "+" => Some(Op::Plus),
             "&&" => Some(Op::And),
             "||" => Some(Op::Or),
+            "==" => Some(Op::Equals),
+            "!=" => Some(Op::NotEquals),
+            "<" => Some(Op::LessThan),
+            "<=" => Some(Op::LessThanOrEqual),
+            ">" => Some(Op::GreaterThan),
+            ">=" => Some(Op::GreaterThanOrEqual),
             _ => None,
         }
     }
@@ -22,15 +34,25 @@ impl Op {
             '+' => true,
             '&' => true,
             '|' => true,
+            '<' => true,
+            '=' => true,
+            '!' => true,
+            '>' => true,
             _ => false,
         }
     }
 
     pub fn precedence(&self) -> i32 {
         match self {
-            Op::Plus => 2,
+            Op::Plus => 3,
             Op::And => 1,
             Op::Or => 0,
+            Op::Equals => 2,
+            Op::NotEquals => 2,
+            Op::GreaterThan => 2,
+            Op::GreaterThanOrEqual => 2,
+            Op::LessThan => 2,
+            Op::LessThanOrEqual => 2,
         }
     }
 }
@@ -41,6 +63,12 @@ impl fmt::Debug for Op {
             Op::Plus => "+",
             Op::And => "&&",
             Op::Or => "||",
+            Op::Equals => "==",
+            Op::NotEquals => "!=",
+            Op::LessThan => "<",
+            Op::LessThanOrEqual => "<=",
+            Op::GreaterThan => ">",
+            Op::GreaterThanOrEqual => ">=",
         };
         write!(f, "{}", s)
     }

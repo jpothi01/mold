@@ -216,6 +216,7 @@ fn eval_op<'a>(
                 .as_str(),
             )),
         },
+        _ => panic!(),
     }
 }
 

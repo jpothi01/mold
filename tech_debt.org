@@ -1,2 +1,4 @@
 * Runtime
 ** TODO function and method call code is all fucked up
+
+** TODO operator code does not support multi-character operators well
