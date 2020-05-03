@@ -4,7 +4,7 @@
 //}
 //print("DONE!")
 
-a = if true {
+let a = if true {
     6   
 } else {}
 a

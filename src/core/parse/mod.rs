@@ -42,11 +42,12 @@ impl<'a> ParserState<'a> {
         self.remaining_input = &self.remaining_input[n..]
     }
     fn consume_until<P: Fn(char) -> bool>(&mut self, predicate: P) {
-        while let Some(c) = self.next_character() {
+        loop {
             while self.remaining_input.starts_with("//") {
                 self.consume_line_comment();
             }
-            if !predicate(c) {
+
+            if self.next_character().is_some() && !predicate(self.next_character().unwrap()) {
                 self.consume_character();
             } else {
                 break;
@@ -112,6 +113,7 @@ mod keywords {
     pub const FALSE: &'static str = "false";
     pub const RUST_FUNCTION: &'static str = "rust fn";
     pub const WHILE: &'static str = "while";
+    pub const LET: &'static str = "let";
 }
 
 impl fmt::Display for ParseError {
@@ -745,6 +747,14 @@ fn parse_expr(parser_state: &mut ParserState) -> ParseResult {
 
     if starts_with_keyword(parser_state.remaining_input, keywords::WHILE) {
         return parse_while(parser_state);
+    }
+
+    debug_println!("TEST: {:?}", parser_state);
+    if starts_with_keyword(parser_state.remaining_input, keywords::LET) {
+        // TODO: let currently is cosmetic to make typing mold code feel more natural
+        // for rust users. Maybe it should be impued with variable declaration semantics as well?
+        parser_state.consume_n_characters(keywords::LET.len());
+        return parse_expr(parser_state);
     }
 
     let primary = parse_primary(parser_state)?;
