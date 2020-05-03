@@ -43,7 +43,7 @@ impl<'a> ParserState<'a> {
     }
     fn consume_until<P: Fn(char) -> bool>(&mut self, predicate: P) {
         while let Some(c) = self.next_character() {
-            if self.remaining_input.starts_with("//") {
+            while self.remaining_input.starts_with("//") {
                 self.consume_line_comment();
             }
             if !predicate(c) {
@@ -87,6 +87,10 @@ impl<'a> ParserState<'a> {
     }
 }
 
+fn is_block_terminator(c: char) -> bool {
+    c == '}'
+}
+
 // Does this character always terminate an expression?
 fn is_expression_terminator(c: char) -> bool {
     // Putting '}' here might cause trouble when I add structs
@@ -107,6 +111,7 @@ mod keywords {
     pub const TRUE: &'static str = "true";
     pub const FALSE: &'static str = "false";
     pub const RUST_FUNCTION: &'static str = "rust fn";
+    pub const WHILE: &'static str = "while";
 }
 
 impl fmt::Display for ParseError {
@@ -121,29 +126,42 @@ fn make_parse_error(parser_state: &ParserState, msg: &str) -> ParseError {
     let error_character_index =
         parser_state.original_input.len() - parser_state.remaining_input.len();
 
+    let mut number_of_backwards_lines_of_context = 1;
+    let mut squiggle_count_start_index: Option<usize> = None;
     let mut original_input_substring_start_index = error_character_index;
-    while original_input_substring_start_index > 0
-        && parser_state
+    while original_input_substring_start_index > 0 && number_of_backwards_lines_of_context >= 0 {
+        original_input_substring_start_index -= 1;
+
+        if parser_state
             .original_input
             .chars()
-            .nth(original_input_substring_start_index - 1)
-            != Some('\n')
-    {
-        original_input_substring_start_index -= 1;
+            .nth(original_input_substring_start_index)
+            == Some('\n')
+        {
+            if squiggle_count_start_index.is_none() {
+                squiggle_count_start_index = Some(original_input_substring_start_index);
+            }
+            number_of_backwards_lines_of_context -= 1;
+        }
     }
 
+    let mut number_of_forwards_lines_of_context = 1;
     let mut original_input_substring_end_index = error_character_index;
     while original_input_substring_end_index < parser_state.original_input.len()
-        && parser_state
-            .original_input
-            .chars()
-            .nth(original_input_substring_end_index + 1)
-            != Some('\n')
+        && number_of_forwards_lines_of_context >= 0
     {
         original_input_substring_end_index += 1;
+        if parser_state
+            .original_input
+            .chars()
+            .nth(original_input_substring_end_index)
+            != Some('\n')
+        {
+            number_of_forwards_lines_of_context -= 1;
+        }
     }
 
-    let number_of_squiggles = error_character_index - original_input_substring_start_index;
+    let number_of_squiggles = error_character_index - squiggle_count_start_index.unwrap();
     let squiggle_string = "~".repeat(number_of_squiggles);
 
     let original_input_substring = &parser_state.original_input
@@ -305,14 +323,16 @@ fn parse_assignment(parser_state: &mut ParserState, lhs: AssignmentLHS) -> Parse
 
     let rhs = parse_primary(parser_state)?;
 
-    // TODO: this is messy. We want to support both with newline and without newline at the
+    // We want to support both with newline and without newline at the
     // last statement of a Unit-returning Statement-expr.
-    let rest = if parser_state.remaining_input.len() >= 2 {
+
+    parser_state.consume_until_nonwhitespace_or_newline();
+
+    if let Some(_) = parser_state.next_character() {
         parser_state.expect_character_and_consume('\n')?;
-        parse_expr(parser_state)?
-    } else {
-        Expr::Unit
-    };
+    }
+
+    let rest = parse_expr(parser_state)?;
     Ok(Expr::Statement(
         Statement::Assignment {
             lhs: lhs,
@@ -673,10 +693,43 @@ fn parse_if_else(parser_state: &mut ParserState) -> ParseResult {
     }))
 }
 
+fn parse_while(parser_state: &mut ParserState) -> ParseResult {
+    debug_assert!(starts_with_keyword(
+        parser_state.remaining_input,
+        keywords::WHILE
+    ));
+
+    parser_state.consume_n_characters(keywords::WHILE.len());
+    parser_state.consume_until_nonwhitespace();
+    let condition = parse_expr(parser_state)?;
+    parser_state.consume_until_nonwhitespace();
+    let body = parse_block(parser_state)?;
+    parser_state.consume_until_nonwhitespace_or_newline();
+    parser_state.expect_character_and_consume('\n')?;
+    let rest = parse_expr(parser_state)?;
+    Ok(Expr::Statement(
+        Statement::While {
+            condition: Box::new(condition),
+            body: Box::new(body),
+        },
+        Box::new(rest),
+    ))
+}
+
 fn parse_expr(parser_state: &mut ParserState) -> ParseResult {
     debug_println!("parse_expr: {:?}", parser_state);
 
     parser_state.consume_until_nonwhitespace();
+
+    // Take care of Unit-returning blocks and top-levels
+    match parser_state.next_character() {
+        None => return Ok(Expr::Unit),
+        Some(c) => {
+            if is_block_terminator(c) {
+                return Ok(Expr::Unit);
+            }
+        }
+    }
 
     if starts_with_keyword(parser_state.remaining_input, keywords::RUST_FUNCTION) {
         return parse_rust_function_definition_expr(parser_state);
@@ -688,6 +741,10 @@ fn parse_expr(parser_state: &mut ParserState) -> ParseResult {
 
     if starts_with_keyword(parser_state.remaining_input, keywords::IMPL) {
         return parse_impl(parser_state);
+    }
+
+    if starts_with_keyword(parser_state.remaining_input, keywords::WHILE) {
+        return parse_while(parser_state);
     }
 
     let primary = parse_primary(parser_state)?;
@@ -804,7 +861,7 @@ mod tests {
     }
 
     #[test]
-    fn parse_void_statement() {
+    fn parse_unit_returning_toplevel() {
         assert_eq!(
             parse("a = 1"),
             Ok(Expr::Statement(
@@ -814,6 +871,47 @@ mod tests {
                 },
                 Box::new(Expr::Unit)
             ))
+        )
+    }
+
+    #[test]
+    fn parse_unit_returning_block() {
+        assert_eq!(
+            parse(
+                r#"
+{
+    a = 1
+    b = 2
+}
+            "#
+            ),
+            Ok(Expr::Block(Box::new(Expr::Statement(
+                Statement::Assignment {
+                    lhs: AssignmentLHS::Single(Identifier::from("a")),
+                    rhs: Box::new(Expr::Number(1f64))
+                },
+                Box::new(Expr::Statement(
+                    Statement::Assignment {
+                        lhs: AssignmentLHS::Single(Identifier::from("b")),
+                        rhs: Box::new(Expr::Number(2f64))
+                    },
+                    Box::new(Expr::Unit)
+                ))
+            ))))
+        );
+    }
+
+    #[test]
+    fn parse_empty_block() {
+        assert_eq!(
+            parse(
+                r#"
+{
+
+}
+            "#
+            ),
+            Ok(Expr::Block(Box::new(Expr::Unit)))
         )
     }
 

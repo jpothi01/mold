@@ -1,6 +1,10 @@
-b = 1
-a = {
-    b = 2
-    b
-}
-a + b
+//a = true
+//while a {
+//    a = false
+//}
+//print("DONE!")
+
+a = if true {
+    6   
+} else {}
+a

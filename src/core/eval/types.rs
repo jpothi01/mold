@@ -110,7 +110,7 @@ impl Type for Number {
 }
 
 #[derive(PartialEq, Clone, Debug)]
-pub struct Unit {}
+pub struct Unit;
 
 impl Display for Unit {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

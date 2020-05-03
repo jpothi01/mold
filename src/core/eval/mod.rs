@@ -438,6 +438,24 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
                 eval(rest, environment)
             }
             Statement::IfElse(ifelse) => panic!(),
+            Statement::While { condition, body } => loop {
+                let condition_value = eval(&*condition, environment)?;
+                match condition_value {
+                    Value::Bool(b) => {
+                        if !b.value {
+                            break Ok(Value::Unit(types::Unit));
+                        }
+                    }
+                    _ => {
+                        break Err(make_eval_error(
+                            expr,
+                            "Condition of while loop must return Bool",
+                        ))
+                    }
+                }
+
+                eval(&*body, environment)?;
+            },
         },
         Expr::FunctionCall(function_call) => eval_function_call(expr, function_call, environment),
         Expr::MethodCall { name, target, args } => {

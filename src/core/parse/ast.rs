@@ -134,6 +134,10 @@ pub enum Statement {
         methods: Vec<FunctionDefinition>,
     },
     IfElse(IfElse),
+    While {
+        condition: Box<Expr>,
+        body: Box<Expr>,
+    },
 }
 
 #[derive(PartialEq, Clone)]
@@ -199,6 +203,9 @@ impl fmt::Debug for Expr {
                         write!(f, ")")
                     }
                     Statement::IfElse(ifelse) => write!(f, "{:?}", ifelse),
+                    Statement::While { condition, body } => {
+                        write!(f, "(while {:?} {:?})", condition, body)
+                    }
                 }?;
 
                 write!(f, " {:?}", rest)
