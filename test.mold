@@ -1,8 +1,9 @@
 x = 0
-y = 0
-while x < 200000 && y < 200000000 {
+not_done = true
+while not_done {
     x = x + 1
-    y = x
+    if x == 50000 {
+        not_done = false
+    } else {}
 }
-print("Got here")
-20
+print(x)

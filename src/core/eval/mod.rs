@@ -239,6 +239,29 @@ fn eval_op<'a>(
                 .as_str(),
             )),
         },
+        Op::Equals => match lhs_value {
+            Value::Number(lhs_number) => match rhs_value {
+                Value::Number(rhs_number) => Ok(Value::Bool(types::Bool::from(
+                    lhs_number.value == rhs_number.value,
+                ))),
+                _ => Err(make_eval_error(
+                    rhs,
+                    format!(
+                        "Expected expression of type Number, got {}",
+                        rhs_value.type_id()
+                    )
+                    .as_str(),
+                )),
+            },
+            _ => Err(make_eval_error(
+                lhs,
+                format!(
+                    "Expected expression of type Number, got {}",
+                    lhs_value.type_id()
+                )
+                .as_str(),
+            )),
+        },
         _ => panic!(),
     }
 }
