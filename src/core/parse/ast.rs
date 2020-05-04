@@ -3,7 +3,9 @@ use std::fmt;
 #[derive(PartialEq, Clone, Copy)]
 pub enum Op {
     Plus,
+    Minus,
     Times,
+    DividedBy,
     And,
     Or,
     Equals,
@@ -18,7 +20,9 @@ impl Op {
     pub fn from_str(s: &str) -> Option<Op> {
         match s {
             "+" => Some(Op::Plus),
+            "-" => Some(Op::Minus),
             "*" => Some(Op::Times),
+            "/" => Some(Op::DividedBy),
             "&&" => Some(Op::And),
             "||" => Some(Op::Or),
             "==" => Some(Op::Equals),
@@ -34,7 +38,9 @@ impl Op {
     pub fn precedence(&self) -> i32 {
         match self {
             Op::Plus => 3,
+            Op::Minus => 3,
             Op::Times => 4,
+            Op::DividedBy => 4,
             Op::And => 1,
             Op::Or => 0,
             Op::Equals => 2,
@@ -51,7 +57,9 @@ impl fmt::Debug for Op {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
             Op::Plus => "+",
+            Op::Minus => "-",
             Op::Times => "*",
+            Op::DividedBy => "/",
             Op::And => "&&",
             Op::Or => "||",
             Op::Equals => "==",
