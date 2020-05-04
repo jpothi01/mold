@@ -170,6 +170,29 @@ fn eval_op<'a>(
 
     match op {
         Op::Plus => Ok(lhs_value + rhs_value),
+        Op::Times => match lhs_value {
+            Value::Number(lhs_number) => match rhs_value {
+                Value::Number(rhs_number) => Ok(Value::Number(types::Number::from(
+                    lhs_number.value * rhs_number.value,
+                ))),
+                _ => Err(make_eval_error(
+                    rhs,
+                    format!(
+                        "Expected expression of type Number, got {}",
+                        rhs_value.type_id()
+                    )
+                    .as_str(),
+                )),
+            },
+            _ => Err(make_eval_error(
+                lhs,
+                format!(
+                    "Expected expression of type Number, got {}",
+                    lhs_value.type_id()
+                )
+                .as_str(),
+            )),
+        },
         Op::And => match lhs_value {
             Value::Bool(lhs_bool) => match rhs_value {
                 Value::Bool(rhs_bool) => Ok(Value::Bool(types::Bool {
