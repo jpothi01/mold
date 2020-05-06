@@ -2,4 +2,3 @@ enum Option {
     None,
     Some(value)
 }
-

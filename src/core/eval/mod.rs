@@ -446,7 +446,7 @@ fn eval_enum_definition<'a>(
     environment: &mut Environment<'a>,
 ) -> Result<(), EvalError> {
     if environment
-        .variables
+        .types
         .contains_key(enum_definition.name.as_str())
     {
         return Err(make_eval_error(
