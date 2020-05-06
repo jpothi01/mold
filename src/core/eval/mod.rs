@@ -482,6 +482,7 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
                 ))
             }
         }
+        Expr::EnumAlternative(enum_alternative) => panic!("not implemented"),
         Expr::Statement(statement, rest) => match statement {
             Statement::Assignment { lhs, rhs } => match lhs {
                 AssignmentLHS::Single(identifier) => {

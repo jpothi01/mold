@@ -1,8 +1,8 @@
 pub mod ast;
 
 use ast::AssignmentLHS;
-use ast::EnumAlternative;
 use ast::EnumDefinition;
+use ast::EnumItem;
 use ast::Expr;
 use ast::FunctionCall;
 use ast::FunctionDefinition;
@@ -668,7 +668,7 @@ fn parse_enum_definition(parser_state: &mut ParserState) -> ParseResult {
     parser_state.expect_character_and_consume('{')?;
     parser_state.consume_until_nonwhitespace();
 
-    let mut alternatives: Vec<EnumAlternative> = Vec::new();
+    let mut alternatives: Vec<EnumItem> = Vec::new();
     while parser_state.next_character().is_some() && parser_state.next_character() != Some('}') {
         if alternatives.len() > 0 {
             parser_state.expect_character_and_consume(',')?;
@@ -676,13 +676,11 @@ fn parse_enum_definition(parser_state: &mut ParserState) -> ParseResult {
 
         parser_state.consume_until_nonwhitespace();
 
-        fn parse_enum_alternative(
-            parser_state: &mut ParserState,
-        ) -> Result<EnumAlternative, ParseError> {
+        fn parse_enum_alternative(parser_state: &mut ParserState) -> Result<EnumItem, ParseError> {
             let mut associated_values: Vec<Identifier> = Vec::new();
             let tag = parse_identifier(parser_state)?;
             if parser_state.next_character() != Some('(') {
-                return Ok(EnumAlternative {
+                return Ok(EnumItem {
                     tag: tag,
                     associated_values: associated_values,
                 });
@@ -699,7 +697,7 @@ fn parse_enum_definition(parser_state: &mut ParserState) -> ParseResult {
             }
             parser_state.consume_character();
 
-            return Ok(EnumAlternative {
+            return Ok(EnumItem {
                 tag: tag,
                 associated_values: associated_values,
             });
@@ -1391,11 +1389,11 @@ print()"#
                 Statement::EnumDefinition(EnumDefinition {
                     name: TypeID::from("Option"),
                     alternatives: vec!(
-                        EnumAlternative {
+                        EnumItem {
                             tag: Identifier::from("None"),
                             associated_values: vec!()
                         },
-                        EnumAlternative {
+                        EnumItem {
                             tag: Identifier::from("Some"),
                             associated_values: vec!(Identifier::from("value"))
                         }

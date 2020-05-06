@@ -148,15 +148,15 @@ impl fmt::Debug for FunctionCall {
 }
 
 #[derive(PartialEq, Clone)]
-pub struct EnumAlternative {
+pub struct EnumItem {
     pub tag: Identifier,
     // For now, only tuple associated values
     pub associated_values: Vec<Identifier>,
 }
 
-impl fmt::Debug for EnumAlternative {
+impl fmt::Debug for EnumItem {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "(enumalt {:?}", self.tag)?;
+        write!(f, "(enumitem {:?}", self.tag)?;
         for alternative in &self.associated_values {
             write!(f, " {:?}", alternative)?;
         }
@@ -167,7 +167,7 @@ impl fmt::Debug for EnumAlternative {
 #[derive(PartialEq, Clone)]
 pub struct EnumDefinition {
     pub name: TypeID,
-    pub alternatives: Vec<EnumAlternative>,
+    pub alternatives: Vec<EnumItem>,
 }
 
 impl fmt::Debug for EnumDefinition {
@@ -175,6 +175,27 @@ impl fmt::Debug for EnumDefinition {
         write!(f, "(enumdef {:?}", self.name)?;
         for alternative in &self.alternatives {
             write!(f, " {:?}", alternative)?;
+        }
+        write!(f, ")")
+    }
+}
+
+#[derive(PartialEq, Clone)]
+pub struct EnumAlternative {
+    pub enum_name: TypeID,
+    pub alternative_name: Identifier,
+    pub associated_values: Vec<Expr>,
+}
+
+impl fmt::Debug for EnumAlternative {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "(enumalt {:?} {:?}",
+            self.enum_name, self.alternative_name
+        )?;
+        for associated_value in &self.associated_values {
+            write!(f, " {:?}", associated_value)?;
         }
         write!(f, ")")
     }
@@ -213,6 +234,7 @@ pub enum Expr {
     String(String),
     Bool(bool),
     Ident(Identifier),
+    EnumAlternative(EnumAlternative),
     Statement(Statement, Box<Expr>),
     FunctionCall(FunctionCall),
     MethodCall {
@@ -246,6 +268,7 @@ impl fmt::Debug for Expr {
             Expr::String(s) => write!(f, "({:?})", s),
             Expr::Bool(b) => write!(f, "({})", if *b { "true" } else { "false" }),
             Expr::Ident(i) => write!(f, "(id {:?})", i),
+            Expr::EnumAlternative(e) => write!(f, "{:?}", e),
             Expr::Statement(statement, rest) => {
                 match statement {
                     Statement::Assignment { lhs, rhs } => write!(f, "(assign {:?} {:?})", lhs, rhs),
