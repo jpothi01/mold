@@ -116,6 +116,7 @@ mod keywords {
     pub const RUST_FUNCTION: &'static str = "rust fn";
     pub const WHILE: &'static str = "while";
     pub const LET: &'static str = "let";
+    pub const ENUM: &'static str = "enum";
 }
 
 impl fmt::Display for ParseError {
@@ -653,6 +654,73 @@ fn parse_impl(parser_state: &mut ParserState) -> ParseResult {
     ))
 }
 
+fn parse_enum_definition(parser_state: &mut ParserState) -> ParseResult {
+    debug_println!("parse_enum_definition: {:?}", parser_state);
+    debug_assert!(starts_with_keyword(
+        parser_state.remaining_input,
+        keywords::ENUM
+    ));
+    parser_state.consume_n_characters(keywords::ENUM.len());
+    parser_state.consume_until_nonwhitespace();
+
+    let type_identifier = parse_identifier(parser_state)?;
+    parser_state.consume_until_nonwhitespace();
+    parser_state.expect_character_and_consume('{')?;
+    parser_state.consume_until_nonwhitespace();
+
+    let mut alternatives: Vec<EnumAlternative> = Vec::new();
+    while parser_state.next_character().is_some() && parser_state.next_character() != Some('}') {
+        if alternatives.len() > 0 {
+            parser_state.expect_character_and_consume(',')?;
+        }
+
+        parser_state.consume_until_nonwhitespace();
+
+        fn parse_enum_alternative(
+            parser_state: &mut ParserState,
+        ) -> Result<EnumAlternative, ParseError> {
+            let mut associated_values: Vec<Identifier> = Vec::new();
+            let tag = parse_identifier(parser_state)?;
+            if parser_state.next_character() != Some('(') {
+                return Ok(EnumAlternative {
+                    tag: tag,
+                    associated_values: associated_values,
+                });
+            }
+
+            parser_state.consume_character();
+            while parser_state.next_character() != Some(')') {
+                if associated_values.len() > 0 {
+                    parser_state.expect_character_and_consume(',')?;
+                }
+                parser_state.consume_until_nonwhitespace();
+                associated_values.push(parse_identifier(parser_state)?);
+                parser_state.consume_until_nonwhitespace();
+            }
+            parser_state.consume_character();
+
+            return Ok(EnumAlternative {
+                tag: tag,
+                associated_values: associated_values,
+            });
+        }
+
+        alternatives.push(parse_enum_alternative(parser_state)?);
+        parser_state.consume_until_nonwhitespace();
+    }
+
+    parser_state.expect_character_and_consume('}')?;
+    let rest = parse_expr(parser_state)?;
+
+    Ok(Expr::Statement(
+        Statement::EnumDefinition(EnumDefinition {
+            name: type_identifier,
+            alternatives: alternatives,
+        }),
+        Box::new(rest),
+    ))
+}
+
 fn parse_if_else(parser_state: &mut ParserState) -> ParseResult {
     debug_println!("parse_if_else: {:?}", parser_state);
     debug_assert!(starts_with_keyword(
@@ -748,6 +816,10 @@ fn parse_expr(parser_state: &mut ParserState) -> ParseResult {
 
     if starts_with_keyword(parser_state.remaining_input, keywords::IMPL) {
         return parse_impl(parser_state);
+    }
+
+    if starts_with_keyword(parser_state.remaining_input, keywords::ENUM) {
+        return parse_enum_definition(parser_state);
     }
 
     if starts_with_keyword(parser_state.remaining_input, keywords::WHILE) {
