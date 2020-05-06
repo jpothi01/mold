@@ -1,6 +1,8 @@
 pub mod ast;
 
 use ast::AssignmentLHS;
+use ast::EnumAlternative;
+use ast::EnumDefinition;
 use ast::Expr;
 use ast::FunctionCall;
 use ast::FunctionDefinition;
@@ -1300,6 +1302,35 @@ print()"#
                 lhs: Box::new(Expr::Ident(Identifier::from("a"))),
                 rhs: Box::new(Expr::Ident(Identifier::from("b"))),
             })))
+        );
+    }
+
+    #[test]
+    fn parse_enum_definition() {
+        assert_eq!(
+            parse(
+                r#"
+        enum Option {
+            None,
+            Some(value)
+        }"#
+            ),
+            Ok(Expr::Statement(
+                Statement::EnumDefinition(EnumDefinition {
+                    name: TypeID::from("Option"),
+                    alternatives: vec!(
+                        EnumAlternative {
+                            tag: Identifier::from("None"),
+                            associated_values: vec!()
+                        },
+                        EnumAlternative {
+                            tag: Identifier::from("Some"),
+                            associated_values: vec!(Identifier::from("value"))
+                        }
+                    )
+                }),
+                Box::new(Expr::Unit)
+            ))
         );
     }
 }

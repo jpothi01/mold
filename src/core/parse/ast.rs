@@ -92,7 +92,7 @@ impl fmt::Debug for FunctionDefinition {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "(fn {:?} ({:?}) {:?})",
+            "(fndef {:?} ({:?}) {:?})",
             self.signature.name, self.signature.args, self.body
         )
     }
@@ -108,7 +108,7 @@ impl fmt::Debug for RustFunctionDefinition {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "(rustfn {:?} ({:?}) {:?})",
+            "(rustfndef {:?} ({:?}) {:?})",
             self.signature.name, self.signature.args, self.body
         )
     }
@@ -148,11 +148,45 @@ impl fmt::Debug for FunctionCall {
 }
 
 #[derive(PartialEq, Clone)]
+pub struct EnumAlternative {
+    pub tag: Identifier,
+    // For now, only tuple associated values
+    pub associated_values: Vec<Identifier>,
+}
+
+impl fmt::Debug for EnumAlternative {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "(enumalt {:?}", self.tag)?;
+        for alternative in &self.associated_values {
+            write!(f, " {:?}", alternative)?;
+        }
+        write!(f, ")")
+    }
+}
+
+#[derive(PartialEq, Clone)]
+pub struct EnumDefinition {
+    pub name: TypeID,
+    pub alternatives: Vec<EnumAlternative>,
+}
+
+impl fmt::Debug for EnumDefinition {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "(enumdef {:?}", self.name)?;
+        for alternative in &self.alternatives {
+            write!(f, " {:?}", alternative)?;
+        }
+        write!(f, ")")
+    }
+}
+
+#[derive(PartialEq, Clone)]
 pub enum Statement {
     Assignment {
         lhs: AssignmentLHS,
         rhs: Box<Expr>,
     },
+    EnumDefinition(EnumDefinition),
     FunctionCall(FunctionCall),
     FunctionDefinition(FunctionDefinition),
     RustFunctionDefinition(RustFunctionDefinition),
@@ -215,6 +249,9 @@ impl fmt::Debug for Expr {
             Expr::Statement(statement, rest) => {
                 match statement {
                     Statement::Assignment { lhs, rhs } => write!(f, "(assign {:?} {:?})", lhs, rhs),
+                    Statement::EnumDefinition(enum_definition) => {
+                        write!(f, "{:?}", enum_definition)
+                    }
                     Statement::FunctionCall(function_call) => write!(f, "{:?}", function_call),
                     Statement::FunctionDefinition(function_definition) => {
                         write!(f, "{:?}", function_definition)

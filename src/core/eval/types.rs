@@ -1,3 +1,5 @@
+use super::value::Value;
+use crate::core::parse::ast::EnumDefinition;
 use crate::core::parse::ast::Expr;
 use crate::core::parse::ast::Identifier;
 use crate::core::parse::ast::TypeID;
@@ -127,5 +129,24 @@ impl Display for Unit {
 impl Type for Unit {
     fn type_id(&self) -> TypeID {
         TypeID::from("Unit")
+    }
+}
+
+#[derive(PartialEq, Clone, Debug)]
+pub struct Enum<'a> {
+    which: usize,
+    associated_value: Box<Value<'a>>,
+    definition: &'a EnumDefinition,
+}
+
+impl<'a> Display for Enum<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "(Enum {})", self.type_id())
+    }
+}
+
+impl<'a> Type for Enum<'a> {
+    fn type_id(&self) -> TypeID {
+        self.definition.name.clone()
     }
 }
