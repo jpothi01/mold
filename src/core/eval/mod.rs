@@ -2,6 +2,7 @@ pub mod types;
 pub mod value;
 
 use super::parse::ast::AssignmentLHS;
+use super::parse::ast::EnumDefinition;
 use super::parse::ast::Expr;
 use super::parse::ast::FunctionCall;
 use super::parse::ast::FunctionDefinition;
@@ -25,10 +26,17 @@ pub struct VariableContent<'a> {
     value: Value<'a>,
 }
 
+#[derive(Clone)]
+pub enum TypeDefinition<'a> {
+    Primitive,
+    Enum(&'a EnumDefinition),
+}
+
 pub type Methods<'a> = HashMap<Identifier, types::Function<'a>>;
 #[derive(Clone)]
 pub struct TypeContent<'a> {
     methods: Methods<'a>,
+    definition: TypeDefinition<'a>,
 }
 pub type Variables<'a> = HashMap<Identifier, VariableContent<'a>>;
 pub type RustFunctions = HashMap<Identifier, types::RustFunction>;
@@ -56,6 +64,7 @@ impl<'a> Environment<'a> {
                 String::from(*id),
                 TypeContent {
                     methods: Methods::new(),
+                    definition: TypeDefinition::Primitive,
                 },
             );
         }
@@ -431,6 +440,31 @@ fn eval_function_call<'a>(
     }
 }
 
+fn eval_enum_definition<'a>(
+    expr: &'a Expr,
+    enum_definition: &'a EnumDefinition,
+    environment: &mut Environment<'a>,
+) -> Result<(), EvalError> {
+    if environment
+        .variables
+        .contains_key(enum_definition.name.as_str())
+    {
+        return Err(make_eval_error(
+            expr,
+            format!("Redefinition of enum {}", enum_definition.name).as_str(),
+        ));
+    }
+
+    let type_content = TypeContent {
+        methods: Methods::new(),
+        definition: TypeDefinition::Enum(enum_definition),
+    };
+    environment
+        .types
+        .insert(enum_definition.name.clone(), type_content);
+    Ok(())
+}
+
 pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult<'a> {
     match expr {
         Expr::BinOp { op, lhs, rhs } => eval_op(op, lhs, rhs, environment),
@@ -464,7 +498,10 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
                     eval(rest, environment)
                 }
             },
-            Statement::EnumDefinition(enum_definition) => panic!("not supported"),
+            Statement::EnumDefinition(enum_definition) => {
+                eval_enum_definition(expr, enum_definition, environment)?;
+                eval(rest, environment)
+            }
             Statement::FunctionCall(function_call) => {
                 // Note we're throwing away the result here.
                 eval_function_call(expr, function_call, environment)?;
