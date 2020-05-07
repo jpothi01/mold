@@ -1,6 +1,7 @@
 pub mod ast;
 
 use ast::AssignmentLHS;
+use ast::EnumAlternative;
 use ast::EnumDefinition;
 use ast::EnumItem;
 use ast::Expr;
@@ -506,6 +507,7 @@ fn parse_primary(parser_state: &mut ParserState) -> ParseResult {
                     args: function_call_args,
                 }));
             }
+            Some(':') => return parse_enum_alternative(parser_state, identifier),
             _ => return Ok(Expr::Ident(identifier)),
         }
     }
@@ -717,6 +719,38 @@ fn parse_enum_definition(parser_state: &mut ParserState) -> ParseResult {
         }),
         Box::new(rest),
     ))
+}
+
+fn parse_enum_alternative(parser_state: &mut ParserState, enum_name: Identifier) -> ParseResult {
+    parser_state.expect_character_and_consume(':')?;
+    parser_state.expect_character_and_consume(':')?;
+    let alternative_name = parse_identifier(parser_state)?;
+
+    if parser_state.next_character() != Some('(') {
+        return Ok(Expr::EnumAlternative(EnumAlternative {
+            enum_name: enum_name,
+            alternative_name: alternative_name,
+            associated_values: vec![],
+        }));
+    }
+
+    parser_state.consume_character();
+    let mut associated_values: Vec<Expr> = Vec::new();
+    while parser_state.next_character() != Some(')') {
+        if associated_values.len() > 0 {
+            parser_state.expect_character_and_consume(',')?;
+        }
+        parser_state.consume_until_nonwhitespace();
+        associated_values.push(parse_expr(parser_state)?);
+        parser_state.consume_until_nonwhitespace();
+    }
+    parser_state.consume_character();
+
+    return Ok(Expr::EnumAlternative(EnumAlternative {
+        enum_name: enum_name,
+        alternative_name: alternative_name,
+        associated_values: associated_values,
+    }));
 }
 
 fn parse_if_else(parser_state: &mut ParserState) -> ParseResult {
@@ -1402,5 +1436,34 @@ print()"#
                 Box::new(Expr::Unit)
             ))
         );
+    }
+
+    #[test]
+    fn parse_enum_alternative() {
+        assert_eq!(
+            parse("a = MyEnum::True\nOtherEnum::Tuple(1 + 2, \"hello\")"),
+            Ok(Expr::Statement(
+                Statement::Assignment {
+                    lhs: AssignmentLHS::Single(Identifier::from("a")),
+                    rhs: Box::new(Expr::EnumAlternative(EnumAlternative {
+                        enum_name: TypeID::from("MyEnum"),
+                        alternative_name: Identifier::from("True"),
+                        associated_values: vec!()
+                    }))
+                },
+                Box::new(Expr::EnumAlternative(EnumAlternative {
+                    enum_name: TypeID::from("OtherEnum"),
+                    alternative_name: Identifier::from("Tuple"),
+                    associated_values: vec!(
+                        Expr::BinOp {
+                            op: Op::Plus,
+                            lhs: Box::new(Expr::Number(1f64)),
+                            rhs: Box::new(Expr::Number(2f64)),
+                        },
+                        Expr::String(String::from("hello"))
+                    )
+                }))
+            ))
+        )
     }
 }
