@@ -1,6 +1,6 @@
 enum Option {
-    None,
-    Some(value)
+    None(a),
+    Some
 }
 
-Option::Some(1+2)
+Option::None(2)

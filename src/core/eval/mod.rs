@@ -484,16 +484,31 @@ fn eval_enum_alternative<'a>(
     let type_definition = &environment.types[enum_alternative.enum_name.as_str()];
     match type_definition.definition {
         TypeDefinition::Enum(enum_definition) => {
-            let which = enum_definition
+            let maybe_which = enum_definition
                 .alternatives
                 .iter()
                 .position(|a| a.tag == enum_alternative.alternative_name);
-            if which.is_none() {
+            if maybe_which.is_none() {
                 return Err(make_eval_error(
                     expr,
                     format!(
                         "Alternative name {} not found in enum {}",
                         enum_alternative.alternative_name, enum_alternative.enum_name
+                    )
+                    .as_str(),
+                ));
+            }
+
+            let which = maybe_which.unwrap();
+            if enum_alternative.associated_values.len()
+                != enum_definition.alternatives[which].associated_values.len()
+            {
+                return Err(make_eval_error(
+                    expr,
+                    format!(
+                        "Wrong number of associated values. Expected {}, got {}.",
+                        enum_definition.alternatives[which].associated_values.len(),
+                        enum_alternative.associated_values.len(),
                     )
                     .as_str(),
                 ));
@@ -505,7 +520,7 @@ fn eval_enum_alternative<'a>(
             }
 
             return Ok(Value::Enum(types::Enum {
-                which: which.unwrap(),
+                which: which,
                 associated_values: associated_values,
                 definition: enum_definition,
             }));
