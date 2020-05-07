@@ -2,3 +2,5 @@ enum Option {
     None,
     Some(value)
 }
+
+Option::Some(1+2)

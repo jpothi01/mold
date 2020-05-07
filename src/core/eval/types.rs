@@ -134,14 +134,23 @@ impl Type for Unit {
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct Enum<'a> {
-    which: usize,
-    associated_value: Box<Value<'a>>,
-    definition: &'a EnumDefinition,
+    pub which: usize,
+    pub associated_values: Vec<Value<'a>>,
+    pub definition: &'a EnumDefinition,
 }
 
 impl<'a> Display for Enum<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "(Enum {})", self.type_id())
+        write!(
+            f,
+            "(Enum {} {}",
+            self.type_id(),
+            self.definition.alternatives[self.which].tag
+        )?;
+        for v in &self.associated_values {
+            write!(f, " {}", v)?;
+        }
+        write!(f, ")")
     }
 }
 

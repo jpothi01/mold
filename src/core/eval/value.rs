@@ -47,7 +47,7 @@ impl<'a> fmt::Display for Value<'a> {
             }
             Value::String(s) => write!(f, "{}", s.value),
             Value::Unit(_) => write!(f, "()"),
-            Value::Enum(_) => write!(f, "(ENUM)"),
+            Value::Enum(e) => write!(f, "{}", e),
         }
     }
 }

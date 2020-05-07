@@ -2,6 +2,7 @@ pub mod types;
 pub mod value;
 
 use super::parse::ast::AssignmentLHS;
+use super::parse::ast::EnumAlternative;
 use super::parse::ast::EnumDefinition;
 use super::parse::ast::Expr;
 use super::parse::ast::FunctionCall;
@@ -465,6 +466,63 @@ fn eval_enum_definition<'a>(
     Ok(())
 }
 
+fn eval_enum_alternative<'a>(
+    expr: &'a Expr,
+    enum_alternative: &'a EnumAlternative,
+    environment: &mut Environment<'a>,
+) -> EvalResult<'a> {
+    if !environment
+        .types
+        .contains_key(enum_alternative.enum_name.as_str())
+    {
+        return Err(make_eval_error(
+            expr,
+            format!("Undefined enum {}", enum_alternative.enum_name).as_str(),
+        ));
+    }
+
+    let type_definition = &environment.types[enum_alternative.enum_name.as_str()];
+    match type_definition.definition {
+        TypeDefinition::Enum(enum_definition) => {
+            let which = enum_definition
+                .alternatives
+                .iter()
+                .position(|a| a.tag == enum_alternative.alternative_name);
+            if which.is_none() {
+                return Err(make_eval_error(
+                    expr,
+                    format!(
+                        "Alternative name {} not found in enum {}",
+                        enum_alternative.alternative_name, enum_alternative.enum_name
+                    )
+                    .as_str(),
+                ));
+            }
+
+            let mut associated_values: Vec<Value<'a>> = Vec::new();
+            for expr in &enum_alternative.associated_values {
+                associated_values.push(eval(expr, environment)?);
+            }
+
+            return Ok(Value::Enum(types::Enum {
+                which: which.unwrap(),
+                associated_values: associated_values,
+                definition: enum_definition,
+            }));
+        }
+        _ => {
+            return Err(make_eval_error(
+                expr,
+                format!(
+                    "Type {} is not an enum",
+                    enum_alternative.enum_name.as_str()
+                )
+                .as_str(),
+            ))
+        }
+    }
+}
+
 pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult<'a> {
     match expr {
         Expr::BinOp { op, lhs, rhs } => eval_op(op, lhs, rhs, environment),
@@ -482,7 +540,9 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
                 ))
             }
         }
-        Expr::EnumAlternative(enum_alternative) => panic!("not implemented"),
+        Expr::EnumAlternative(enum_alternative) => {
+            eval_enum_alternative(expr, enum_alternative, environment)
+        }
         Expr::Statement(statement, rest) => match statement {
             Statement::Assignment { lhs, rhs } => match lhs {
                 AssignmentLHS::Single(identifier) => {
