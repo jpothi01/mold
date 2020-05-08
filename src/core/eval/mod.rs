@@ -769,6 +769,7 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
             }
         }
         Expr::Block(block_expr) => eval(block_expr, environment),
+        Expr::Match(m) => panic!(),
     }
 }
 

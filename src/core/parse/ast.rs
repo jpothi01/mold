@@ -202,6 +202,37 @@ impl fmt::Debug for EnumAlternative {
 }
 
 #[derive(PartialEq, Clone)]
+pub enum MatchArm {
+    EnumDestructure(EnumItem),
+}
+
+impl fmt::Debug for MatchArm {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            MatchArm::EnumDestructure(enum_destructure) => {
+                write!(f, "(enumdestructure {:?})", enum_destructure)
+            }
+        }
+    }
+}
+
+#[derive(PartialEq, Clone)]
+pub struct Match {
+    pub match_expr: Box<Expr>,
+    pub arms: Vec<MatchArm>,
+}
+
+impl fmt::Debug for Match {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "(match {:?}", self.match_expr)?;
+        for arm in &self.arms {
+            write!(f, " {:?}", arm)?;
+        }
+        write!(f, ")")
+    }
+}
+
+#[derive(PartialEq, Clone)]
 pub enum Statement {
     Assignment {
         lhs: AssignmentLHS,
@@ -244,6 +275,7 @@ pub enum Expr {
     },
     IfElse(IfElse),
     Block(Box<Expr>),
+    Match(Match),
 }
 
 #[derive(PartialEq, Clone)]
@@ -308,6 +340,7 @@ impl fmt::Debug for Expr {
             }
             Expr::IfElse(ifelse) => write!(f, "{:?}", ifelse),
             Expr::Block(expr) => write!(f, "(block {:?})", expr),
+            Expr::Match(m) => write!(f, "{:?}", m),
         }
     }
 }

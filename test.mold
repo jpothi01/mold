@@ -3,4 +3,13 @@ enum Option {
     Some
 }
 
-Option::None(2)
+fn f(a) {
+    Option::None(a)
+}
+
+x = f(3)
+
+match x {
+    Option::None(a) => a,
+    Option::Some => 2
+}

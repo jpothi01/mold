@@ -118,6 +118,8 @@ mod keywords {
     pub const WHILE: &'static str = "while";
     pub const LET: &'static str = "let";
     pub const ENUM: &'static str = "enum";
+    pub const MATCH: &'static str = "match";
+    pub const MATCH_ARROW: &'static str = "=>";
 }
 
 impl fmt::Display for ParseError {
