@@ -735,6 +735,7 @@ fn parse_enum_alternative(
     parser_state: &mut ParserState,
     enum_name: Identifier,
 ) -> Result<EnumAlternative, ParseError> {
+    debug_println!("parse_enum_alternative: {:?}", parser_state);
     parser_state.expect_character_and_consume(':')?;
     parser_state.expect_character_and_consume(':')?;
     let alternative_name = parse_identifier(parser_state)?;
@@ -767,6 +768,7 @@ fn parse_enum_alternative(
 }
 
 fn parse_match(parser_state: &mut ParserState) -> ParseResult {
+    debug_println!("parse_match: {:?}", parser_state);
     debug_assert!(starts_with_keyword(
         parser_state.remaining_input,
         keywords::MATCH

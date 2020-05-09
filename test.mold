@@ -1,15 +1,9 @@
 enum Option {
-    None(a),
-    Some
+    None,
+    Some(x)
 }
 
-fn f(a) {
-    Option::None(a)
-}
-
-x = f(3)
-
-match x {
-    Option::None(a) => a,
-    Option::Some => 2,
+match Option::Some(1) {
+    Option::None => 1,
+    Option::Some(a) => 2,
 }

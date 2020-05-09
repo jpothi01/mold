@@ -8,6 +8,8 @@ use super::parse::ast::Expr;
 use super::parse::ast::FunctionCall;
 use super::parse::ast::FunctionDefinition;
 use super::parse::ast::Identifier;
+use super::parse::ast::Match;
+use super::parse::ast::MatchPattern;
 use super::parse::ast::Op;
 use super::parse::ast::Statement;
 use super::parse::ast::TypeID;
@@ -538,6 +540,39 @@ fn eval_enum_alternative<'a>(
     }
 }
 
+fn eval_match<'a>(
+    expr: &'a Expr,
+    m: &'a Match,
+    environment: &mut Environment<'a>,
+) -> EvalResult<'a> {
+    let value_to_match = eval(&*m.match_expr, environment)?;
+    match value_to_match {
+        Value::Enum(e) => {
+            let maybe_item = e.definition.alternatives.get(e.which);
+
+            // Should have been guaranteed by evaluation.
+            debug_assert!(maybe_item.is_some());
+            let alternative_name = &maybe_item.unwrap().tag;
+            let matched_arm = m.arms.iter().find(|&arm| match &arm.pattern {
+                MatchPattern::EnumDestructure(enum_destructure) => {
+                    enum_destructure.alternative_name == alternative_name.as_str()
+                }
+                _ => false,
+            });
+
+            if matched_arm.is_none() {
+                return Err(make_eval_error(
+                    expr,
+                    format!("Unhandled enum alternative '{}'", alternative_name).as_str(),
+                ));
+            }
+
+            return Ok(eval(&matched_arm.unwrap().expr, environment)?);
+        }
+        _ => return Err(make_eval_error(expr, "Only Enum values can be matched on")),
+    }
+}
+
 pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult<'a> {
     match expr {
         Expr::BinOp { op, lhs, rhs } => eval_op(op, lhs, rhs, environment),
@@ -769,7 +804,7 @@ pub fn eval<'a>(expr: &'a Expr, environment: &mut Environment<'a>) -> EvalResult
             }
         }
         Expr::Block(block_expr) => eval(block_expr, environment),
-        Expr::Match(m) => panic!(),
+        Expr::Match(m) => eval_match(expr, m, environment),
     }
 }
 
