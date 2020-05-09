@@ -202,17 +202,40 @@ impl fmt::Debug for EnumAlternative {
 }
 
 #[derive(PartialEq, Clone)]
-pub enum MatchArm {
-    EnumDestructure(EnumItem),
+pub struct EnumDestructure {
+    pub enum_name: TypeID,
+    pub alternative_name: Identifier,
+    pub associated_values: Vec<Identifier>,
+}
+
+impl fmt::Debug for EnumDestructure {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "(enumdestructure {:?} {:?}",
+            self.enum_name, self.alternative_name
+        )?;
+        for associated_value in &self.associated_values {
+            write!(f, " {:?}", associated_value)?;
+        }
+        write!(f, ")")
+    }
+}
+
+#[derive(PartialEq, Clone, Debug)]
+pub enum MatchPattern {
+    EnumDestructure(EnumDestructure),
+}
+
+#[derive(PartialEq, Clone)]
+pub struct MatchArm {
+    pub pattern: MatchPattern,
+    pub expr: Expr,
 }
 
 impl fmt::Debug for MatchArm {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            MatchArm::EnumDestructure(enum_destructure) => {
-                write!(f, "(enumdestructure {:?})", enum_destructure)
-            }
-        }
+        write!(f, "(matcharm {:?} {:?})", self.pattern, self.expr)
     }
 }
 

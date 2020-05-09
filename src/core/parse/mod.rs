@@ -3,6 +3,7 @@ pub mod ast;
 use ast::AssignmentLHS;
 use ast::EnumAlternative;
 use ast::EnumDefinition;
+use ast::EnumDestructure;
 use ast::EnumItem;
 use ast::Expr;
 use ast::FunctionCall;
@@ -10,6 +11,9 @@ use ast::FunctionDefinition;
 use ast::FunctionSignature;
 use ast::Identifier;
 use ast::IfElse;
+use ast::Match;
+use ast::MatchArm;
+use ast::MatchPattern;
 use ast::Op;
 use ast::RustFunctionDefinition;
 use ast::Statement;
@@ -119,7 +123,6 @@ mod keywords {
     pub const LET: &'static str = "let";
     pub const ENUM: &'static str = "enum";
     pub const MATCH: &'static str = "match";
-    pub const MATCH_ARROW: &'static str = "=>";
 }
 
 impl fmt::Display for ParseError {
@@ -169,7 +172,7 @@ fn make_parse_error(parser_state: &ParserState, msg: &str) -> ParseError {
         }
     }
 
-    let number_of_squiggles = error_character_index - squiggle_count_start_index.unwrap();
+    let number_of_squiggles = error_character_index - squiggle_count_start_index.unwrap_or(0usize);
     let squiggle_string = "~".repeat(number_of_squiggles);
 
     let original_input_substring = &parser_state.original_input
@@ -509,7 +512,12 @@ fn parse_primary(parser_state: &mut ParserState) -> ParseResult {
                     args: function_call_args,
                 }));
             }
-            Some(':') => return parse_enum_alternative(parser_state, identifier),
+            Some(':') => {
+                return Ok(Expr::EnumAlternative(parse_enum_alternative(
+                    parser_state,
+                    identifier,
+                )?))
+            }
             _ => return Ok(Expr::Ident(identifier)),
         }
     }
@@ -723,17 +731,20 @@ fn parse_enum_definition(parser_state: &mut ParserState) -> ParseResult {
     ))
 }
 
-fn parse_enum_alternative(parser_state: &mut ParserState, enum_name: Identifier) -> ParseResult {
+fn parse_enum_alternative(
+    parser_state: &mut ParserState,
+    enum_name: Identifier,
+) -> Result<EnumAlternative, ParseError> {
     parser_state.expect_character_and_consume(':')?;
     parser_state.expect_character_and_consume(':')?;
     let alternative_name = parse_identifier(parser_state)?;
 
     if parser_state.next_character() != Some('(') {
-        return Ok(Expr::EnumAlternative(EnumAlternative {
+        return Ok(EnumAlternative {
             enum_name: enum_name,
             alternative_name: alternative_name,
             associated_values: vec![],
-        }));
+        });
     }
 
     parser_state.consume_character();
@@ -748,11 +759,79 @@ fn parse_enum_alternative(parser_state: &mut ParserState, enum_name: Identifier)
     }
     parser_state.consume_character();
 
-    return Ok(Expr::EnumAlternative(EnumAlternative {
+    return Ok(EnumAlternative {
         enum_name: enum_name,
         alternative_name: alternative_name,
         associated_values: associated_values,
-    }));
+    });
+}
+
+fn parse_match(parser_state: &mut ParserState) -> ParseResult {
+    debug_assert!(starts_with_keyword(
+        parser_state.remaining_input,
+        keywords::MATCH
+    ));
+
+    parser_state.consume_n_characters(keywords::MATCH.len());
+
+    let match_expr = parse_expr(parser_state)?;
+    parser_state.consume_until_nonwhitespace();
+    parser_state.expect_character_and_consume('{')?;
+
+    fn parse_match_pattern(parser_state: &mut ParserState) -> Result<MatchPattern, ParseError> {
+        // TODO: this is kind of a hack, since technically a match pattern isn't necessarily an
+        // enum alternative once we add non-enum patterns
+        let enum_name = parse_identifier(parser_state)?;
+        let enum_alternative = parse_enum_alternative(parser_state, enum_name.clone())?;
+        let mut associated_values: Vec<Identifier> = Vec::new();
+        for value in &enum_alternative.associated_values {
+            if let Expr::Ident(identifier) = value {
+                associated_values.push(identifier.clone());
+            } else {
+                return Err(make_parse_error(
+                    parser_state,
+                    "Expected identifier inside enum destructure",
+                ));
+            }
+        }
+        Ok(MatchPattern::EnumDestructure(EnumDestructure {
+            enum_name: enum_name,
+            alternative_name: enum_alternative.alternative_name,
+            associated_values: associated_values,
+        }))
+    }
+
+    fn parse_match_arm(parser_state: &mut ParserState) -> Result<MatchArm, ParseError> {
+        let pattern = parse_match_pattern(parser_state)?;
+        parser_state.consume_until_nonwhitespace();
+        if parser_state.remaining_input.len() < 2 && &parser_state.remaining_input[..2] != "=>" {
+            return Err(make_parse_error(parser_state, "Expected '=>'"));
+        }
+
+        parser_state.consume_n_characters(2);
+        let expr = parse_expr(parser_state)?;
+        Ok(MatchArm {
+            pattern: pattern,
+            expr: expr,
+        })
+    }
+
+    let mut arms: Vec<MatchArm> = Vec::new();
+    while parser_state.next_character() != Some('}') {
+        parser_state.consume_until_nonwhitespace();
+
+        if arms.len() > 0 {
+            parser_state.expect_character_and_consume(',')?;
+            parser_state.consume_until_nonwhitespace();
+        }
+
+        arms.push(parse_match_arm(parser_state)?);
+    }
+
+    Ok(Expr::Match(Match {
+        match_expr: Box::new(match_expr),
+        arms: arms,
+    }))
 }
 
 fn parse_if_else(parser_state: &mut ParserState) -> ParseResult {
@@ -858,6 +937,10 @@ fn parse_expr(parser_state: &mut ParserState) -> ParseResult {
 
     if starts_with_keyword(parser_state.remaining_input, keywords::WHILE) {
         return parse_while(parser_state);
+    }
+
+    if starts_with_keyword(parser_state.remaining_input, keywords::MATCH) {
+        return parse_match(parser_state);
     }
 
     if starts_with_keyword(parser_state.remaining_input, keywords::LET) {
@@ -1466,6 +1549,34 @@ print()"#
                     )
                 }))
             ))
+        )
+    }
+
+    #[test]
+    fn parse_match() {
+        assert_eq!(
+            parse("match x { Option::None => 1, Option::Some(n) => n }"),
+            Ok(Expr::Match(Match {
+                match_expr: Box::new(Expr::Ident(Identifier::from("x"))),
+                arms: vec!(
+                    MatchArm {
+                        pattern: MatchPattern::EnumDestructure(EnumDestructure {
+                            enum_name: TypeID::from("Option"),
+                            alternative_name: Identifier::from("None"),
+                            associated_values: vec!()
+                        }),
+                        expr: Expr::Number(1f64)
+                    },
+                    MatchArm {
+                        pattern: MatchPattern::EnumDestructure(EnumDestructure {
+                            enum_name: TypeID::from("Option"),
+                            alternative_name: Identifier::from("Some"),
+                            associated_values: vec!(Identifier::from("n"))
+                        }),
+                        expr: Expr::Ident(Identifier::from("n"))
+                    }
+                )
+            }))
         )
     }
 }
