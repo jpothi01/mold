@@ -3,7 +3,7 @@ enum Option {
     Some(x)
 }
 
-match Option::Some(1) {
+match Option::Some(3) {
     Option::None => 1,
-    Option::Some(a) => 2,
+    Option::Some(a) => a,
 }

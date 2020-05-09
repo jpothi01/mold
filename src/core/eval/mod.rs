@@ -553,21 +553,43 @@ fn eval_match<'a>(
             // Should have been guaranteed by evaluation.
             debug_assert!(maybe_item.is_some());
             let alternative_name = &maybe_item.unwrap().tag;
-            let matched_arm = m.arms.iter().find(|&arm| match &arm.pattern {
+            let maybe_matched_arm = m.arms.iter().find(|&arm| match &arm.pattern {
                 MatchPattern::EnumDestructure(enum_destructure) => {
                     enum_destructure.alternative_name == alternative_name.as_str()
                 }
-                _ => false,
             });
 
-            if matched_arm.is_none() {
+            if maybe_matched_arm.is_none() {
                 return Err(make_eval_error(
                     expr,
                     format!("Unhandled enum alternative '{}'", alternative_name).as_str(),
                 ));
             }
 
-            return Ok(eval(&matched_arm.unwrap().expr, environment)?);
+            let matched_arm = maybe_matched_arm.unwrap();
+            match &matched_arm.pattern {
+                MatchPattern::EnumDestructure(enum_destructure) => {
+                    if e.associated_values.len() != enum_destructure.associated_values.len() {
+                        return Err(make_eval_error(expr, 
+                            format!("Incorrect number of associated values in enum pattern. Expected {}, got {}", 
+                            e.associated_values.len(), enum_destructure.associated_values.len()).as_str()));
+                    }
+    
+                    for i in 0..enum_destructure.associated_values.len() {
+                        let variable_content = VariableContent{
+                            // TODO: this is a nonsense placeholder until I figure out whether we're actually
+                            // going to use the expression references in variable content. Enum destructures
+                            // don't have expression references, they have identifier AST nodes.
+                            expr: expr,
+                            value: e.associated_values[i].clone()
+                        };
+                        let variable_name = enum_destructure.associated_values[i].clone();
+                        environment.variables.insert(variable_name, variable_content);
+                    }
+                }
+            }
+            
+            return Ok(eval(&matched_arm.expr, environment)?);
         }
         _ => return Err(make_eval_error(expr, "Only Enum values can be matched on")),
     }

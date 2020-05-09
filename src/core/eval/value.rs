@@ -14,11 +14,6 @@ pub enum Value<'a> {
     Enum(types::Enum<'a>),
 }
 
-enum Option<'a> {
-    None,
-    Some(Value<'a>),
-}
-
 impl<'a> Type for Value<'a> {
     fn type_id(&self) -> TypeID {
         match self {
