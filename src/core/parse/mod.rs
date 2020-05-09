@@ -820,13 +820,14 @@ fn parse_match(parser_state: &mut ParserState) -> ParseResult {
     while parser_state.next_character() != Some('}') {
         parser_state.consume_until_nonwhitespace();
 
-        if arms.len() > 0 {
-            parser_state.expect_character_and_consume(',')?;
-            parser_state.consume_until_nonwhitespace();
-        }
-
         arms.push(parse_match_arm(parser_state)?);
+        parser_state.consume_until_nonwhitespace();
+
+        parser_state.expect_character_and_consume(',')?;
+        parser_state.consume_until_nonwhitespace();
     }
+
+    parser_state.consume_character();
 
     Ok(Expr::Match(Match {
         match_expr: Box::new(match_expr),
@@ -1555,7 +1556,7 @@ print()"#
     #[test]
     fn parse_match() {
         assert_eq!(
-            parse("match x { Option::None => 1, Option::Some(n) => n }"),
+            parse("match x { Option::None => 1, Option::Some(n) => n, }"),
             Ok(Expr::Match(Match {
                 match_expr: Box::new(Expr::Ident(Identifier::from("x"))),
                 arms: vec!(
